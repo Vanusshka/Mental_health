@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Brain, Send, Wind, Music, Heart, ChevronRight, ChevronLeft,
-  SkipForward, Play, Pause, BarChart2
+  Brain, Send, Wind, Heart, ChevronRight, BarChart2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageTransition from "@/components/PageTransition";
@@ -32,12 +31,6 @@ const AI_RESPONSES = [
   "I notice you're being quite hard on yourself. What would you say to a close friend who was feeling what you're feeling?",
 ];
 
-const tracks = [
-  { title: "Ocean Breath", artist: "Serenity Sounds", duration: "4:32" },
-  { title: "Quiet Rain", artist: "Ambient Keys", duration: "5:18" },
-  { title: "Morning Glow", artist: "Lo-fi Dreams", duration: "3:47" },
-  { title: "Focus Flow", artist: "Study Waves", duration: "6:05" },
-];
 
 const supportCards = [
   { text: "You are not your thoughts. You are the observer of them.", color: "from-primary/20 to-secondary/10" },
@@ -120,59 +113,6 @@ function BreathingWidget() {
   );
 }
 
-function MusicPlayer() {
-  const [trackIdx, setTrackIdx] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(32);
-  const track = tracks[trackIdx];
-
-  useEffect(() => {
-    if (!playing) return;
-    const interval = setInterval(() => setProgress((p) => (p >= 100 ? 0 : p + 0.5)), 300);
-    return () => clearInterval(interval);
-  }, [playing]);
-
-  return (
-    <div className="glass-card rounded-xl p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-xs font-semibold">{track.title}</p>
-          <p className="text-xs text-muted-foreground">{track.artist}</p>
-        </div>
-        <Music size={14} className="text-primary mt-0.5" />
-      </div>
-      <div className="h-1 rounded-full bg-muted mb-3 overflow-hidden">
-        <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => setTrackIdx((i) => (i === 0 ? tracks.length - 1 : i - 1))}
-          className="text-muted-foreground hover:text-primary transition-colors"
-          data-testid="button-prev-track"
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <button
-          onClick={() => setPlaying(!playing)}
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-md"
-          data-testid="button-play-pause"
-        >
-          {playing ? <Pause size={12} className="text-white" /> : <Play size={12} className="text-white" />}
-        </button>
-        <button
-          onClick={() => setTrackIdx((i) => (i + 1) % tracks.length)}
-          className="text-muted-foreground hover:text-primary transition-colors"
-          data-testid="button-next-track"
-        >
-          <SkipForward size={16} />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
@@ -323,10 +263,6 @@ export default function Chat() {
                   <div className="rounded-xl bg-background/50 border border-border">
                     <BreathingWidget />
                   </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Calm Music</p>
-                  <MusicPlayer />
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Support Cards</p>
