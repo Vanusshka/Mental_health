@@ -1,0 +1,197 @@
+Enhance the emotional interactivity of the entire website UI.
+
+IMPORTANT:
+The entire application should dynamically change its background colors, lighting effects, particles, gradients, animations, and ambient music based on the user's selected mood.
+
+At the beginning, there should ONLY be 3 mood options:
+
+1. 😊 Happy
+2. 😐 Neutral
+3. 😔 Sad
+
+---
+
+## GLOBAL MOOD-BASED EXPERIENCE
+
+When a user selects a mood, the ENTIRE WEBSITE EXPERIENCE should adapt emotionally.
+
+This includes:
+
+* background gradients
+* floating particles
+* lighting/glow effects
+* animations
+* transitions
+* card colors
+* button colors
+* hover effects
+* music
+* UI atmosphere
+
+The transition between moods should feel smooth, immersive, and emotionally intelligent.
+
+Use Framer Motion animations and smooth gradient transitions throughout the app.
+
+---
+
+## 😊 HAPPY MODE
+
+Theme Goal:
+Energetic, uplifting, positive, warm, motivating.
+
+Background:
+
+* Bright animated gradients
+* Yellow, orange, gold, warm pink tones
+* Moving soft light streaks
+* Floating glowing particles
+
+Effects:
+
+* Gentle floating animations
+* Dynamic glowing cards
+* Animated gradient blobs
+* Smooth energetic transitions
+
+Music:
+
+* Automatically start uplifting lo-fi/chill happy music
+* Music should autoplay as soon as the page redirects
+* Include a floating music control widget
+
+UI Feel:
+
+* Vibrant
+* Motivating
+* Warm
+* Positive energy
+
+---
+
+## 😐 NEUTRAL MODE
+
+Theme Goal:
+Balanced, calm, focused, peaceful.
+
+Background:
+
+* Mixed warm and cool gradients
+* Beige, cyan, soft blue, pastel gray tones
+* Subtle animated particles
+* Soft moving gradient mesh
+
+Effects:
+
+* Minimal calm animations
+* Smooth hover interactions
+* Soft breathing glow effects
+
+Music:
+
+* Automatically play calm focus music
+* Light ambient instrumental sounds
+* Music begins immediately after redirect
+
+UI Feel:
+
+* Stable
+* Focused
+* Relaxing
+* Balanced
+
+---
+
+## 😔 SAD MODE
+
+Theme Goal:
+Emotionally comforting, safe, calming, soft.
+
+Background:
+
+* Pastel blue, lavender, soft purple gradients
+* Slow-moving ambient glow effects
+* Floating soft particles
+* Gentle breathing animations
+
+Effects:
+
+* Soft fade transitions
+* Calm glassmorphism
+* Slow-moving gradient overlays
+* Emotional atmospheric lighting
+
+Music:
+
+* Automatically play soothing piano/ambient calming music
+* Music should start immediately after redirect
+* Include breathing ambience if possible
+
+UI Feel:
+
+* Emotionally supportive
+* Calm
+* Safe
+* Comforting
+
+---
+
+## BACKGROUND EFFECTS
+
+The background should NEVER feel static.
+
+Add:
+
+* Animated gradient meshes
+* Floating particles
+* Interactive mouse-follow glow
+* Smooth motion blur effects
+* Ambient lighting
+* Floating glowing blobs
+* Dynamic glassmorphism overlays
+
+The emotional atmosphere should feel alive and immersive.
+
+---
+
+## MUSIC SYSTEM
+
+Create a persistent mood-based music system.
+
+Requirements:
+
+* Music auto-starts after mood selection
+* Different playlist/audio for each mood
+* Smooth fade-in/fade-out transitions between tracks
+* Floating minimal music player UI
+* User can pause/change volume
+* Music continues while navigating pages
+
+---
+
+## ANIMATION REQUIREMENTS
+
+Use:
+
+* Framer Motion
+* Smooth page transitions
+* Animated hover states
+* Floating emotional particles
+* Soft pulse effects
+* Interactive UI reactions
+* Animated gradients
+* Dynamic shadows/glows
+
+Transitions should feel premium and cinematic.
+
+---
+
+## OVERALL EXPERIENCE
+
+The app should feel like:
+
+* an emotionally intelligent AI platform
+* immersive and interactive
+* futuristic but human-centered
+* calming and emotionally adaptive
+
+The UI should emotionally react to the user’s mood selection throughout the entire website experience.

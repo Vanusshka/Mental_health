@@ -4,8 +4,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AnimatePresence } from "framer-motion";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { MoodProvider } from "@/contexts/MoodContext";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import MoodBackground from "@/components/MoodBackground";
+import MusicPlayer from "@/components/MusicPlayer";
+import MouseGlow from "@/components/MouseGlow";
 
 // Pages
 import Home from "@/pages/Home";
@@ -41,20 +45,30 @@ function Router() {
 function App() {
   return (
     <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <div className="flex min-h-screen flex-col">
-              <Navigation />
-              <main className="flex-1">
-                <Router />
-              </main>
-              <Footer />
-            </div>
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
+      <MoodProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              {/* Global mood-reactive background */}
+              <MoodBackground />
+              {/* Mouse follow glow */}
+              <MouseGlow />
+
+              <div className="flex min-h-screen flex-col relative">
+                <Navigation />
+                <main className="flex-1">
+                  <Router />
+                </main>
+                <Footer />
+              </div>
+
+              {/* Floating music player */}
+              <MusicPlayer />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </MoodProvider>
     </ThemeProvider>
   );
 }

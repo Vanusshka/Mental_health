@@ -4,11 +4,13 @@ import { Moon, Sun, Menu, X, Brain } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useMood } from "@/contexts/MoodContext";
 
 export default function Navigation() {
   const [location] = useLocation();
-  const { theme, setTheme } = useTheme();
+  const { theme: colorTheme, setTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { theme: moodTheme } = useMood();
 
   const navItems = [
     { label: "Home", path: "/" },
@@ -19,42 +21,86 @@ export default function Navigation() {
     { label: "Doctor Portal", path: "/doctor" },
   ];
 
+  const accentColor = moodTheme?.accent ?? "hsl(var(--primary))";
+  const borderColor = moodTheme ? `${moodTheme.accent}30` : "rgba(255,255,255,0.15)";
+
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-white/60 dark:bg-black/60 backdrop-blur-xl">
+    <motion.nav
+      className="sticky top-0 z-50 w-full"
+      style={{
+        background: "rgba(255,255,255,0.55)",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
+        borderBottom: `1px solid ${borderColor}`,
+      }}
+      animate={{ borderBottomColor: borderColor }}
+      transition={{ duration: 1, ease: "easeInOut" }}
+    >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="rounded-full bg-primary/10 p-2 text-primary group-hover:bg-primary/20 transition-colors">
-              <Brain size={24} className="animate-pulse-slow" />
-            </div>
-            <span className="text-xl font-medium tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <motion.div
+              className="rounded-xl p-1.5 transition-all duration-300"
+              style={{
+                background: moodTheme
+                  ? `linear-gradient(135deg, ${moodTheme.particle1}25, ${moodTheme.accent}20)`
+                  : "rgba(99,102,241,0.1)",
+              }}
+              animate={{
+                background: moodTheme
+                  ? `linear-gradient(135deg, ${moodTheme.particle1}25, ${moodTheme.accent}20)`
+                  : "rgba(99,102,241,0.1)",
+              }}
+              transition={{ duration: 1 }}
+            >
+              <Brain
+                size={22}
+                style={{ color: accentColor }}
+                className="transition-colors duration-700"
+              />
+            </motion.div>
+            <span
+              className="text-xl font-semibold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-700"
+            >
               MindEase AI
             </span>
           </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location === item.path ? "text-primary" : "text-muted-foreground"
-                }`}
-                data-testid={`nav-${item.label.toLowerCase().replace(" ", "-")}`}
-              >
-                {item.label}
-              </Link>
-            ))}
-            
+            {navItems.map((item) => {
+              const isActive = location === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className="relative text-sm font-medium transition-colors duration-300"
+                  style={{ color: isActive ? accentColor : undefined }}
+                  data-testid={`nav-${item.label.toLowerCase().replace(" ", "-")}`}
+                >
+                  <span className={!isActive ? "text-muted-foreground hover:text-foreground transition-colors" : ""}>
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="nav-active-pill"
+                      className="absolute -bottom-[22px] left-0 right-0 h-0.5 rounded-full"
+                      style={{ background: accentColor }}
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              );
+            })}
+
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="rounded-full w-9 h-9 ml-2 text-muted-foreground hover:text-primary"
+              onClick={() => setTheme(colorTheme === "dark" ? "light" : "dark")}
+              className="rounded-full w-9 h-9 ml-2 text-muted-foreground hover:text-primary transition-colors"
               data-testid="button-theme-toggle"
             >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              {colorTheme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
             </Button>
           </div>
 
@@ -63,10 +109,10 @@ export default function Navigation() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => setTheme(colorTheme === "dark" ? "light" : "dark")}
               className="rounded-full w-9 h-9 text-muted-foreground"
             >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+              {colorTheme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
             </Button>
             <Button
               variant="ghost"
@@ -74,7 +120,7 @@ export default function Navigation() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="text-muted-foreground"
             >
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </Button>
           </div>
         </div>
@@ -87,27 +133,39 @@ export default function Navigation() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="md:hidden overflow-hidden border-b border-white/10 bg-background"
+            className="md:hidden overflow-hidden"
+            style={{
+              background: "rgba(255,255,255,0.75)",
+              backdropFilter: "blur(20px)",
+              borderBottom: `1px solid ${borderColor}`,
+            }}
           >
-            <div className="flex flex-col py-4 px-4 gap-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`text-sm font-medium px-4 py-2 rounded-md transition-colors ${
-                    location === item.path 
-                      ? "bg-primary/10 text-primary" 
-                      : "text-muted-foreground hover:bg-muted hover:text-primary"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
+            <div className="flex flex-col py-4 px-4 gap-2">
+              {navItems.map((item) => {
+                const isActive = location === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-sm font-medium px-4 py-2.5 rounded-xl transition-all duration-200"
+                    style={
+                      isActive
+                        ? {
+                            background: moodTheme ? `${moodTheme.accent}15` : "rgba(99,102,241,0.1)",
+                            color: accentColor,
+                          }
+                        : {}
+                    }
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </nav>
+    </motion.nav>
   );
 }
