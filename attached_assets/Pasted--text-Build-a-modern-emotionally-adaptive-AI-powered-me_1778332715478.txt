@@ -1,0 +1,416 @@
+```text
+Build a modern, emotionally adaptive AI-powered mental wellness platform called “MindEase AI”.
+
+The website should feel calming, premium, futuristic, emotionally safe, and highly interactive — similar to a mix of Headspace, Calm, Apple Health, and a modern AI dashboard.
+
+The UI/UX is one of the MOST important aspects of this project.
+
+---------------------------------------------------
+OVERALL DESIGN STYLE
+---------------------------------------------------
+
+Style:
+- Minimal
+- Clean
+- Emotionally warm
+- Interactive
+- Soft gradients
+- Rounded corners
+- Glassmorphism in selected sections
+- Smooth animations
+- Calm microinteractions
+- Breathing space between elements
+
+Design inspiration:
+- Headspace
+- Calm
+- Spotify gradients
+- Apple Health
+- Modern AI dashboards
+
+Typography:
+- Use “Poppins” or “Inter”
+- Large headings
+- Soft readable text
+- Friendly UI tone
+
+Animations:
+- Smooth transitions
+- Floating particles
+- Fade-in cards
+- Hover effects
+- Mood transition animations
+- Breathing pulse animations
+
+Use:
+- Framer Motion animations
+- Tailwind CSS
+- Responsive design
+- Dark/light adaptive emotional themes
+
+Avoid:
+- Clutter
+- Corporate medical feel
+- Harsh colors
+- Overly dark cyberpunk themes
+
+---------------------------------------------------
+MAIN USER FLOW
+---------------------------------------------------
+
+1. Landing Page
+2. Mood Selection Page
+3. Dynamic Mental Wellness Chat Interface
+4. Emotional Analysis Dashboard
+5. Expert Recommendations Page
+6. Doctor Portal
+7. Patient Progress Tracking
+8. Session Summary Reports
+
+---------------------------------------------------
+LANDING PAGE
+---------------------------------------------------
+
+Create a stunning emotionally immersive landing page.
+
+Hero Section:
+- Full-screen gradient background
+- Floating soft glowing blobs
+- Animated particles
+- Calm emotional atmosphere
+
+Main heading:
+“Your Mental Wellness Companion”
+
+Subheading:
+“AI-powered emotional support, wellness insights, and adaptive mental health guidance.”
+
+Primary CTA:
+“Start Your Check-In”
+
+Secondary CTA:
+“Explore Wellness Tools”
+
+Include:
+- Smooth scroll animations
+- Interactive mood icons
+- Minimal navbar
+- Beautiful animated gradient buttons
+
+Navbar:
+- Home
+- About
+- Features
+- Doctor Portal
+- Contact
+
+Sections:
+- How It Works
+- Emotional Wellness Features
+- AI-powered Adaptive Support
+- Mental Wellness Tracking
+- Doctor Insights
+- Testimonials
+- FAQ
+- Footer
+
+---------------------------------------------------
+MOOD SELECTION PAGE
+---------------------------------------------------
+
+This is the CORE emotional interaction page.
+
+Question:
+“How are you feeling today?”
+
+Display large interactive emotion cards:
+😊 Happy
+😐 Neutral
+😔 Low
+😰 Anxious
+😡 Overwhelmed
+😴 Exhausted
+
+Each card should:
+- Animate on hover
+- Expand slightly
+- Glow softly
+- Change background gradient
+
+When selected:
+- Entire UI theme changes dynamically
+
+---------------------------------------------------
+EMOTION-BASED THEMES
+---------------------------------------------------
+
+HAPPY THEME:
+- Bright warm gradients
+- Yellow/orange tones
+- Floating happy particles
+- Energetic but soft UI
+
+LOW/SAD THEME:
+- Pastel blue/lavender tones
+- Calm gradients
+- Gentle animations
+- Emotionally comforting UI
+
+ANXIOUS THEME:
+- Soft cyan gradients
+- Breathing circle animations
+- Slower motion
+- Relaxing visuals
+
+NEUTRAL/MID THEME:
+- Balanced warm + cool tones
+- Clean minimal UI
+- Focus-oriented atmosphere
+
+---------------------------------------------------
+HAPPY USER EXPERIENCE
+---------------------------------------------------
+
+If user selects happy:
+Show:
+- Positive affirmations
+- Mood maintenance tips
+- Recommended hobbies
+- Brain games
+- Relaxing music playlists
+- Daily wellness streaks
+
+Create beautiful cards for:
+- “Keep Your Momentum”
+- “Today’s Wellness Suggestions”
+- “Recommended Activities”
+
+---------------------------------------------------
+MID/NEUTRAL USER EXPERIENCE
+---------------------------------------------------
+
+If user selects neutral:
+Show:
+- Productivity balance tips
+- Stress prevention insights
+- Sleep improvement suggestions
+- Mini wellness check-in
+
+Include:
+- Interactive sliders
+- Wellness indicators
+- Focus exercises
+- Calm UI cards
+
+---------------------------------------------------
+SAD/ANXIOUS USER EXPERIENCE
+---------------------------------------------------
+
+This should transition into a beautiful AI chat interface.
+
+Chat UI:
+- Modern AI assistant interface
+- Rounded chat bubbles
+- Typing animation
+- Soft glowing input box
+- Emotional tone-based animations
+
+The AI dynamically asks adaptive questions based on user responses.
+
+The page should feel:
+- safe
+- empathetic
+- calming
+- supportive
+
+Add:
+- Floating ambient particles
+- Breathing exercise widget
+- Calm music player
+- Emotional support cards
+
+---------------------------------------------------
+EMOTIONAL ANALYSIS DASHBOARD
+---------------------------------------------------
+
+After the conversation:
+Generate a premium AI wellness dashboard.
+
+Display:
+- Stress Level
+- Anxiety Indicators
+- Burnout Indicators
+- Emotional Stability
+- Sleep Wellness
+- Motivation Levels
+- Social Wellness
+
+Use:
+- Beautiful animated charts
+- Circular progress indicators
+- Gradient analytics cards
+- Interactive graphs
+
+Dashboard should feel:
+- modern
+- premium
+- AI-powered
+- insightful
+
+Include:
+- Emotional timeline
+- Weekly trends
+- Wellness score
+- AI-generated insights
+
+Example:
+“Stress levels appear elevated due to recurring mentions of exhaustion and poor sleep consistency.”
+
+---------------------------------------------------
+EXPERT RECOMMENDATIONS PAGE
+---------------------------------------------------
+
+Suggest mental wellness experts in Hyderabad.
+
+Display:
+- Expert cards
+- Ratings
+- Online/offline availability
+- Affordable options
+- Student-friendly options
+- Specialty tags
+
+Each card should:
+- Have clean modern UI
+- Smooth hover animations
+- Contact button
+- Book appointment button
+
+---------------------------------------------------
+DOCTOR PORTAL
+---------------------------------------------------
+
+Create a professional doctor dashboard.
+
+Doctor can:
+- View patient emotional trends
+- See latest reports
+- Access previous session summaries
+- Track improvement/worsening
+
+Dashboard should include:
+- Patient cards
+- Analytics
+- Session summaries
+- Emotional history graphs
+- AI-generated patient insights
+
+Style:
+- Clean medical-modern hybrid UI
+- More professional than patient side
+- Still emotionally soft
+
+---------------------------------------------------
+SESSION SUMMARY PAGE
+---------------------------------------------------
+
+Generate visually beautiful reports.
+
+Include:
+- Emotional summary
+- Key concerns
+- AI observations
+- Trend analysis
+- Wellness recommendations
+
+Use:
+- Expandable cards
+- Timeline UI
+- Minimal charts
+- Download report button
+
+---------------------------------------------------
+MUSIC EXPERIENCE
+---------------------------------------------------
+
+Integrate soothing background music recommendations based on mood.
+
+Happy:
+- uplifting lo-fi
+
+Sad:
+- calming piano
+
+Anxious:
+- breathing ambient sounds
+
+Neutral:
+- focus music
+
+Music player UI should:
+- be minimal
+- floating
+- glassmorphism styled
+
+---------------------------------------------------
+SPECIAL UI DETAILS
+---------------------------------------------------
+
+Add:
+- Floating emotional particles
+- Smooth page transitions
+- Animated gradients
+- Emotional glow effects
+- Interactive hover states
+- AI typing indicators
+- Soft shadows
+- Glassmorphism
+- Breathing pulse animations
+
+---------------------------------------------------
+TECH REQUIREMENTS
+---------------------------------------------------
+
+Frontend Framework:
+- Next.js
+
+Styling:
+- Tailwind CSS
+
+Animations:
+- Framer Motion
+
+Charts:
+- Recharts
+
+Icons:
+- Lucide React
+
+Design:
+- Fully responsive
+- Mobile-first
+- Premium startup-quality UI
+
+---------------------------------------------------
+IMPORTANT
+---------------------------------------------------
+
+The UI should feel:
+- emotionally intelligent
+- safe
+- modern
+- futuristic
+- human-centered
+- premium
+- interactive
+- calming
+
+The website should NOT feel:
+- overly clinical
+- corporate
+- robotic
+- cluttered
+- overly medical
+
+The final result should look like a real-world AI wellness startup product rather than a basic hackathon project.
+```
