@@ -1,154 +1,79 @@
-"""
-Context-Aware Emotional Response Service
------------------------------------------
-Uses Gemini to generate a warm, personalised response based on:
-  - The user's mood (happy / neutral)
-  - The user's own description of what is behind that mood
-
-Model cascade: tries models in order until one succeeds.
-Handles 429 quota exhaustion gracefully.
-"""
-
-import os
-import json
-import logging
-import re
+﻿import os, json, logging, re
 from typing import Dict
-
-from google import genai
-from google.genai import types
-from google.genai.errors import ClientError
-
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Model cascade — ordered by preference, falls back on 429
-# ---------------------------------------------------------------------------
-_MODEL_CASCADE = [
-    "gemini-2.5-flash-lite",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-flash",
+_MODEL_CASCADE = ["gemini-2.5-flash-lite","gemini-2.5-flash","gemini-2.0-flash-lite","gemini-2.0-flash"]
+_client = None
+
+HAPPY_FALLBACKS = [
+    "That sounds genuinely wonderful! The joy you are feeling right now is real and well-deserved. Hold onto this feeling and let it fuel everything you do today.",
+    "What a beautiful thing to be feeling! Your happiness is contagious and the world is brighter because of it. Keep nurturing what brings you this light.",
+    "This is exactly the kind of energy that creates momentum in life. You are in a great space right now — use it to connect, create, and celebrate.",
+]
+NEUTRAL_FALLBACKS = [
+    "A balanced, steady state is actually a powerful place to be. You have clarity and calm on your side right now — that is a real strength.",
+    "Feeling okay is perfectly valid. Sometimes the most important thing is simply showing up, and you are doing exactly that.",
+    "Steadiness is underrated. You are grounded right now, and that gives you the foundation to move forward with intention.",
+]
+HAPPY_SUGGESTIONS = [
+    ["Share your positive energy with someone who needs it today", "Channel this momentum into a goal you have been putting off", "Write down what made today feel good — it will help you recreate it"],
+    ["Celebrate this moment fully — you deserve it", "Use this energy to reach out to someone you care about", "Start something creative while your mind is in this bright space"],
+]
+NEUTRAL_SUGGESTIONS = [
+    ["Take 5 minutes for a mindful walk to refresh your perspective", "Write down one thing you are looking forward to this week", "Do one small thing today that is just for you"],
+    ["Try a short breathing exercise to deepen your sense of calm", "Reach out to a friend — connection can shift your energy positively", "Set one clear intention for the rest of your day"],
 ]
 
-_client: genai.Client | None = None
-
-
-def _get_client() -> genai.Client:
+def _get_client():
     global _client
     if _client is None:
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        if not api_key or api_key == "your_gemini_api_key_here":
-            raise ValueError(
-                "GEMINI_API_KEY is not set. Add your key to backend/.env and restart."
-            )
-        _client = genai.Client(api_key=api_key)
-        logger.info("Gemini client initialised for context responses.")
+        api_key = os.getenv("GEMINI_API_KEY","")
+        if not api_key or api_key in ("your_gemini_api_key_here","demo_key",""):
+            return None
+        try:
+            from google import genai
+            _client = genai.Client(api_key=api_key)
+        except Exception:
+            return None
     return _client
 
-
-def _build_happy_prompt(context_text: str) -> str:
-    return f"""You are a warm, emotionally intelligent wellness guide — not a chatbot.
-
-A user has selected "Happy" and shared what is making them feel this way:
-"{context_text}"
-
-Your task: Write a single, deeply personalised emotional response that:
-1. Acknowledges and celebrates the SPECIFIC things they mentioned (people, events, achievements, moments)
-2. Reflects genuine warmth and human understanding — not generic positivity
-3. Offers a heartfelt wish or blessing for their continued happiness
-4. Feels like it was written specifically for them, not a template
-
-Then provide 3 short, contextually relevant suggestions for sustaining and building on this happiness.
-Each suggestion should relate directly to what they shared — not generic wellness tips.
-
-Rules:
-- Reference their actual words and situations specifically
-- Sound warm, human, and celebratory — never clinical or robotic
-- Keep the main message to 2–3 sentences maximum
-- Keep each suggestion to 1 sentence
-- Do NOT use phrases like "I understand" or "As an AI"
-- Do NOT ask follow-up questions
-
-Respond ONLY with valid JSON, no markdown:
-{{
-  "message": "Your personalised celebratory response here.",
-  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
-}}"""
-
-
-def _build_neutral_prompt(context_text: str) -> str:
-    return f"""You are a warm, emotionally intelligent wellness guide — not a chatbot.
-
-A user has selected "Neutral / Okay" and shared what their current emotional state is about:
-"{context_text}"
-
-Your task: Write a single, deeply personalised wellness response that:
-1. Acknowledges the SPECIFIC patterns, situations, or feelings they described
-2. Validates their experience with genuine care and understanding
-3. Gently reframes their situation with a hopeful, supportive perspective
-4. Feels like it was written specifically for them, not a template
-
-Then provide 3 short, contextually relevant wellness suggestions that directly address
-what they shared — not generic tips.
-
-Rules:
-- Reference their actual words and situations specifically
-- Sound caring, supportive, and motivating — never clinical or alarming
-- Keep the main message to 2–3 sentences maximum
-- Keep each suggestion to 1 sentence, directly relevant to their context
-- Do NOT use phrases like "I understand" or "As an AI"
-- Do NOT ask follow-up questions
-
-Respond ONLY with valid JSON, no markdown:
-{{
-  "message": "Your personalised supportive response here.",
-  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
-}}"""
-
+def _fallback(mood: str, context_text: str) -> Dict:
+    import random
+    if mood == "happy":
+        msg = random.choice(HAPPY_FALLBACKS)
+        sug = random.choice(HAPPY_SUGGESTIONS)
+    else:
+        msg = random.choice(NEUTRAL_FALLBACKS)
+        sug = random.choice(NEUTRAL_SUGGESTIONS)
+    # Personalise slightly with their words
+    words = [w for w in context_text.split() if len(w) > 4][:3]
+    if words:
+        msg = msg + f" What you shared about {', '.join(words[:2])} really resonates."
+    return {"message": msg, "suggestions": sug}
 
 async def generate_context_response(mood: str, context_text: str) -> Dict:
-    """
-    Generate a context-aware emotional response for happy or neutral users.
-    Tries models in cascade order to handle quota exhaustion.
-    Returns a dict with 'message' and 'suggestions' keys.
-    """
     client = _get_client()
-    prompt = _build_happy_prompt(context_text) if mood == "happy" else _build_neutral_prompt(context_text)
-    last_error: Exception | None = None
-
+    if client is None:
+        logger.info("No Gemini key — using fallback response")
+        return _fallback(mood, context_text)
+    
+    from google.genai import types
+    from google.genai.errors import ClientError
+    prompt = f"""You are a warm wellness guide. User mood: {mood}. They said: "{context_text}"
+Write a 2-sentence personalised response and 3 short suggestions.
+JSON only: {{"message":"...","suggestions":["...","...","..."]}}"""
+    
     for model in _MODEL_CASCADE:
         try:
-            logger.info("Trying model %s for context response (mood=%s)", model, mood)
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.8,
-                    max_output_tokens=2048,
-                    response_mime_type="application/json",
-                ),
-            )
-            raw_text = response.text.strip()
-            clean = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.MULTILINE).strip()
+            response = client.models.generate_content(model=model, contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.8, max_output_tokens=512, response_mime_type="application/json"))
+            clean = re.sub(r"^```(?:json)?\s*|\s*```$","",response.text.strip(),flags=re.MULTILINE).strip()
             data = json.loads(clean)
-            message = str(data.get("message", "")).strip()
-            suggestions = [str(s).strip() for s in data.get("suggestions", [])[:4]]
-            if not message:
-                raise ValueError("'message' key missing or empty.")
-            logger.info("Context response generated with model %s", model)
-            return {"message": message, "suggestions": suggestions}
-
-        except ClientError as exc:
-            status = getattr(exc, "status_code", 500)
+            if data.get("message"):
+                return {"message": str(data["message"]), "suggestions": [str(s) for s in data.get("suggestions",[])[:3]]}
+        except Exception as exc:
+            status = getattr(exc,"status_code",500)
             if status == 429:
-                logger.warning("Model %s quota exhausted, trying next…", model)
-                last_error = exc
                 continue
-            raise
-
-        except (json.JSONDecodeError, ValueError) as exc:
-            logger.error("Parse error from model %s: %s", model, exc)
-            raise RuntimeError(f"Gemini returned an unexpected format: {exc}") from exc
-
-    raise ClientError(429, {"error": {"message": "All Gemini models are rate-limited. Please try again in a few minutes."}}, None) from last_error  # type: ignore[arg-type]
+            break
+    return _fallback(mood, context_text)

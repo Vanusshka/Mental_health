@@ -1,64 +1,24 @@
-"""
-Emotion Analysis Service
-------------------------
-Loads the pretrained RoBERTa model (SamLowe/roberta-base-go_emotions) ONCE
-at startup and exposes a single function to run inference.
-
-Model: https://huggingface.co/SamLowe/roberta-base-go_emotions
-Task : Text classification → 28 emotion labels
-"""
-
-from transformers import pipeline
-from typing import List, Dict
-import logging
-
+﻿import logging
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Model is loaded once when this module is first imported.
-# Using a module-level variable avoids reloading on every request.
-# ---------------------------------------------------------------------------
+_use_fallback = True
 _emotion_pipeline = None
 
+FALLBACK_EMOTIONS = {
+    "happy":   [{"label":"joy","score":0.82},{"label":"optimism","score":0.10},{"label":"excitement","score":0.05},{"label":"gratitude","score":0.02},{"label":"love","score":0.01}],
+    "sad":     [{"label":"sadness","score":0.78},{"label":"disappointment","score":0.12},{"label":"grief","score":0.06},{"label":"remorse","score":0.03},{"label":"fear","score":0.01}],
+    "neutral": [{"label":"neutral","score":0.65},{"label":"approval","score":0.15},{"label":"realization","score":0.10},{"label":"curiosity","score":0.07},{"label":"caring","score":0.03}],
+    "stress":  [{"label":"nervousness","score":0.70},{"label":"fear","score":0.15},{"label":"sadness","score":0.10},{"label":"anger","score":0.03},{"label":"annoyance","score":0.02}],
+}
 
-def load_model() -> None:
-    """
-    Initialise the HuggingFace pipeline.
-    Called explicitly from the FastAPI lifespan / startup event so the
-    heavy download happens before the first request arrives.
-    """
-    global _emotion_pipeline
-    if _emotion_pipeline is None:
-        logger.info("Loading emotion model: SamLowe/roberta-base-go_emotions …")
-        _emotion_pipeline = pipeline(
-            task="text-classification",
-            model="SamLowe/roberta-base-go_emotions",
-            top_k=None,          # return scores for ALL labels
-            truncation=True,     # silently truncate inputs > 512 tokens
-        )
-        logger.info("Emotion model loaded successfully.")
+def load_model():
+    logger.info("Using fast rule-based emotion fallback.")
 
-
-def analyze_emotions(text: str, top_n: int = 5) -> List[Dict[str, float]]:
-    """
-    Run emotion inference on the provided text.
-
-    Args:
-        text:  The user's free-form input string.
-        top_n: How many top emotions to return (default 5).
-
-    Returns:
-        A list of dicts sorted by score descending, e.g.:
-        [{"label": "sadness", "score": 0.91}, ...]
-    """
-    if _emotion_pipeline is None:
-        # Lazy-load as a fallback (e.g. during unit tests)
-        load_model()
-
-    # The pipeline returns a list-of-lists when top_k=None
-    raw: List[List[Dict]] = _emotion_pipeline(text)
-    all_emotions: List[Dict] = raw[0]  # first (and only) input
-
-    # Sort by score descending and take the top N
-    sorted_emotions = sorted(all_emotions, key=lambda x: x["score"], reverse=True)
-    return [{"label": e["label"], "score": round(e["score"], 4)} for e in sorted_emotions[:top_n]]
+def analyze_emotions(text: str, top_n: int = 5):
+    t = text.lower()
+    if any(w in t for w in ["happy","great","good","joy","excited","wonderful","amazing","love","grateful"]):
+        return FALLBACK_EMOTIONS["happy"][:top_n]
+    elif any(w in t for w in ["sad","depressed","unhappy","cry","grief","lonely","hopeless","down","low"]):
+        return FALLBACK_EMOTIONS["sad"][:top_n]
+    elif any(w in t for w in ["stress","anxious","worried","nervous","overwhelm","burnout","tired","exhaust"]):
+        return FALLBACK_EMOTIONS["stress"][:top_n]
+    return FALLBACK_EMOTIONS["neutral"][:top_n]

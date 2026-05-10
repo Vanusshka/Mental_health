@@ -1,652 +1,246 @@
-import { useState, useEffect } from "react";
+﻿import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
-} from "recharts";
-import {
-  Brain, Bell, TrendingUp, TrendingDown, Calendar, FileText,
-  ChevronRight, Shield, LogIn, Loader2, RefreshCw, AlertCircle,
-  Activity, Heart
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import PageTransition from "@/components/PageTransition";
-import { getAllPatientSummaries, type PatientSummary } from "@/services/firestoreService";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { Brain, Plus, X, TrendingUp, TrendingDown, AlertTriangle, FileText, Users, Activity, Heart, ChevronRight } from "lucide-react";
 
-// ── Priority classification config ────────────────────────────────────────
-const TREND_CONFIG = {
-  improving: {
-    label: "Improving",
-    color: "text-emerald-600",
-    bg: "bg-emerald-50 dark:bg-emerald-900/20",
-    border: "border-emerald-200 dark:border-emerald-800",
-    dot: "bg-emerald-400",
-    icon: TrendingUp,
-  },
-  stable: {
-    label: "Stable",
-    color: "text-blue-600",
-    bg: "bg-blue-50 dark:bg-blue-900/20",
-    border: "border-blue-200 dark:border-blue-800",
-    dot: "bg-blue-400",
-    icon: Activity,
-  },
-  declining: {
-    label: "Needs Attention",
-    color: "text-amber-600",
-    bg: "bg-amber-50 dark:bg-amber-900/20",
-    border: "border-amber-200 dark:border-amber-800",
-    dot: "bg-amber-400",
-    icon: TrendingDown,
-  },
-  critical: {
-    label: "High Distress",
-    color: "text-rose-600",
-    bg: "bg-rose-50 dark:bg-rose-900/20",
-    border: "border-rose-200 dark:border-rose-800",
-    dot: "bg-rose-400",
-    icon: Heart,
-  },
-} as const;
+const INITIAL_PATIENTS = [
+  { id:1, name:"Priya Sharma", age:24, condition:"Anxiety", sessions:8, score:62, trend:"improving", stress:58, burnout:45, sleep:65, resilience:70, social:60, notes:"Responding well to CBT. Sleep improving.", history:[{s:"S1",score:45,stress:75},{s:"S2",score:50,stress:70},{s:"S3",score:55,stress:65},{s:"S4",score:58,stress:62},{s:"S5",score:62,stress:58}] },
+  { id:2, name:"Arjun Mehta", age:31, condition:"Burnout", sessions:5, score:41, trend:"declining", stress:78, burnout:82, sleep:38, resilience:35, social:30, notes:"High workload stress. Needs urgent support.", history:[{s:"S1",score:55,stress:60},{s:"S2",score:52,stress:65},{s:"S3",score:48,stress:70},{s:"S4",score:44,stress:75},{s:"S5",score:41,stress:78}] },
+  { id:3, name:"Sneha Reddy", age:19, condition:"Depression", sessions:12, score:55, trend:"stable", stress:52, burnout:48, sleep:58, resilience:55, social:50, notes:"Stable. Continue weekly check-ins.", history:[{s:"S1",score:40,stress:70},{s:"S2",score:45,stress:65},{s:"S3",score:50,stress:60},{s:"S4",score:53,stress:55},{s:"S5",score:55,stress:52}] },
+];
 
-// ── AI wellness insight generator ──────────────────────────────────────────
-function generateWellnessInsight(summary: PatientSummary): string {
-  const latest = summary.latestAssessment;
-  const trend = summary.trend;
-  const name = summary.displayName.split(" ")[0];
+const TREND_COLOR = { improving:"#10b981", stable:"#06b6d4", declining:"#f87171", critical:"#ef4444" };
+const TREND_ICON = { improving:TrendingUp, stable:Activity, declining:TrendingDown, critical:AlertTriangle };
 
-  if (trend === "critical") {
-    return `${name}'s recent assessments indicate elevated emotional distress patterns. Stress indicators are significantly elevated and emotional balance has declined. Early supportive intervention is recommended.`;
+function AddPatientModal({ onAdd, onClose }) {
+  const [form, setForm] = useState({ name:"", age:"", condition:"", notes:"" });
+  function submit() {
+    if (!form.name || !form.condition) return;
+    onAdd({ id: Date.now(), name:form.name, age:parseInt(form.age)||25, condition:form.condition, sessions:1, score:60, trend:"stable", stress:50, burnout:40, sleep:60, resilience:60, social:60, notes:form.notes, history:[{s:"S1",score:60,stress:50}] });
+    onClose();
   }
-  if (trend === "declining") {
-    return `${name} shows signs of increasing emotional strain over recent sessions. Burnout risk indicators have risen and social connectivity patterns suggest some withdrawal. Monitoring and gentle support are advised.`;
-  }
-  if (trend === "improving") {
-    return `${name} is showing positive emotional progression. Wellness scores have improved consistently and emotional balance indicators are trending upward. Current support approach appears effective.`;
-  }
-  // stable
-  if (latest.stressIndicator > 65) {
-    return `${name} maintains a stable overall state, though stress indicators remain elevated. Sleep wellness and emotional resilience patterns suggest ongoing tension that may benefit from targeted support.`;
-  }
-  return `${name} demonstrates stable emotional patterns across recent assessments. Wellness indicators are within a healthy range. Continued check-ins are recommended to sustain this balance.`;
-}
-
-// ── Build chart history from assessments ──────────────────────────────────
-function buildChartHistory(summary: PatientSummary) {
-  return summary.allAssessments
-    .slice(0, 8)
-    .reverse()
-    .map((a, i) => ({
-      session: `S${i + 1}`,
-      score: a.wellnessScore ?? 58,
-      stress: a.stressIndicator ?? 52,
-    }));
-}
-
-function LoginForm({ onLogin }: { onLogin: () => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
+  const inp = { width:"100%", padding:"0.6rem 0.9rem", borderRadius:10, border:"1px solid #e5e7eb", fontSize:"0.9rem", outline:"none", marginTop:"0.3rem", boxSizing:"border-box" };
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-6">
-      <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.96, filter: "blur(8px)" }}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-sm"
-      >
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary mx-auto flex items-center justify-center shadow-lg shadow-primary/30 mb-4">
-            <Shield size={28} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-semibold">Doctor Access</h1>
-          <p className="text-sm text-muted-foreground mt-1">Secure portal for healthcare professionals</p>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"1rem"}}>
+      <motion.div initial={{opacity:0,scale:0.9}} animate={{opacity:1,scale:1}} style={{background:"white",borderRadius:24,padding:"2rem",width:"100%",maxWidth:440,boxShadow:"0 24px 64px rgba(0,0,0,0.15)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem"}}>
+          <h2 style={{fontSize:"1.2rem",fontWeight:700}}>Add New Patient</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer"}}><X size={20} /></button>
         </div>
-        <div className="glass-card rounded-2xl p-6 space-y-4">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="doctor@manas.ai"
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-              data-testid="input-doctor-email"
-            />
+        {[["Patient Name","name","text"],["Age","age","number"],["Condition","condition","text"],["Initial Notes","notes","text"]].map(([label,key,type]) => (
+          <div key={key} style={{marginBottom:"1rem"}}>
+            <label style={{fontSize:"0.8rem",fontWeight:600,color:"#374151"}}>{label}</label>
+            <input type={type} value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})} placeholder={label} style={inp} />
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-              data-testid="input-doctor-password"
-            />
-          </div>
-          <Button
-            className="w-full rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 gap-2 mt-2"
-            onClick={onLogin}
-            data-testid="button-doctor-login"
-          >
-            <LogIn size={16} /> Access Dashboard
-          </Button>
-        </div>
-        <p className="text-xs text-center text-muted-foreground mt-4">
-          Demo: enter any credentials to access the portal
-        </p>
+        ))}
+        <button onClick={submit} style={{width:"100%",padding:"0.8rem",borderRadius:12,background:"linear-gradient(135deg,#0ea5e9,#06b6d4)",color:"white",border:"none",fontWeight:700,fontSize:"0.95rem",cursor:"pointer",marginTop:"0.5rem"}}>
+          Add Patient
+        </button>
       </motion.div>
     </div>
   );
 }
 
-// ── Doctor header sub-component ───────────────────────────────────────────
-function DoctorHeader() {
-  return (
-    <div className="flex items-center justify-between mb-8">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold shadow-md shadow-primary/20">
-          SC
-        </div>
-        <div>
-          <h1 className="font-semibold text-lg">Dr. Sarah Chen</h1>
-          <p className="text-sm text-muted-foreground">Wellness Monitoring Portal</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <button className="relative p-2 text-muted-foreground hover:text-primary transition-colors" data-testid="button-notifications">
-          <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function Doctor() {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [patients, setPatients] = useState<PatientSummary[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<PatientSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [patients, setPatients] = useState(INITIAL_PATIENTS);
+  const [selected, setSelected] = useState(INITIAL_PATIENTS[0]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [tab, setTab] = useState("overview");
 
-  useEffect(() => {
-    if (!loggedIn) return;
-    setIsLoading(true);
-    setLoadError(null);
-    getAllPatientSummaries()
-      .then((summaries) => {
-        setPatients(summaries);
-        if (summaries.length > 0) setSelectedPatient(summaries[0]);
-      })
-      .catch((err) => {
-        // Always log the full error so the Firebase index URL is visible
-        // in DevTools → Console if needed for debugging.
-        console.error("[MANAS Doctor] Firestore query error:", err);
-
-        const msg = String(err?.message ?? err ?? "").toLowerCase();
-
-        // Suppress the amber banner for all Firestore infrastructure errors:
-        //   - index not yet ready / requires an index
-        //   - permission denied
-        //   - missing or insufficient permissions
-        //   - quota exceeded
-        const isInfraError =
-          msg.includes("index") ||
-          msg.includes("permission") ||
-          msg.includes("missing") ||
-          msg.includes("quota") ||
-          msg.includes("insufficient");
-
-        if (!isInfraError) {
-          // Only show the amber banner for genuinely unexpected errors
-          setLoadError(String(err?.message ?? "An unexpected error occurred."));
-        }
-        // In all cases: patients stays [] → graceful empty state renders
-      })
-      .finally(() => setIsLoading(false));
-  }, [loggedIn]);
-
-  if (!loggedIn) {
-    return (
-      <PageTransition>
-        <LoginForm onLogin={() => setLoggedIn(true)} />
-      </PageTransition>
-    );
+  function addPatient(p) { setPatients(prev=>[...prev,p]); setSelected(p); }
+  function saveNote() {
+    if (!noteText.trim()) return;
+    setPatients(prev=>prev.map(p=>p.id===selected.id?{...p,notes:noteText}:p));
+    setSelected(prev=>({...prev,notes:noteText}));
+    setNoteText("");
   }
 
-  // ── Loading ──────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <PageTransition>
-        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-5">
-          <motion.div
-            className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/25"
-            animate={{ scale: [1, 1.06, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Brain size={24} className="text-white" />
-          </motion.div>
-          <div className="flex gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-primary/50"
-                animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-              />
-            ))}
-          </div>
-          <p className="text-sm text-muted-foreground">Loading patient wellness data…</p>
-        </div>
-      </PageTransition>
-    );
-  }
+  const p = patients.find(x=>x.id===selected.id) || selected;
+  const TIcon = TREND_ICON[p.trend] || Activity;
+  const tColor = TREND_COLOR[p.trend] || "#06b6d4";
 
-  // ── Error (soft — never blocks the portal) ──────────────────────────
-  // loadError is only set for unexpected errors, not permission/index issues.
-  // It renders as an inline banner inside the empty state, not a full-screen block.
+  const indicators = [
+    {label:"Emotional Balance",val:p.score,icon:"⚖️"},
+    {label:"Stress Level",val:p.stress,icon:"⚡"},
+    {label:"Burnout Risk",val:p.burnout,icon:"🔋"},
+    {label:"Sleep Wellness",val:p.sleep,icon:"🌙"},
+    {label:"Resilience",val:p.resilience,icon:"🛡️"},
+    {label:"Social Connect",val:p.social,icon:"💬"},
+  ];
 
-  // ── No patients yet — premium onboarding empty state ───────────────
-  if (patients.length === 0) {
-    return (
-      <PageTransition>
-        <div className="container mx-auto max-w-7xl px-6 py-8">
-          <DoctorHeader />
-
-          {/* Soft error banner — only shown for unexpected errors */}
-          {loadError && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 flex items-start gap-3 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-3.5"
-            >
-              <AlertCircle size={15} className="text-amber-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-amber-700 mb-0.5">Data sync notice</p>
-                <p className="text-[11px] text-amber-600 leading-relaxed">{loadError}</p>
-              </div>
-              <button
-                onClick={() => { setLoadError(null); setLoggedIn(false); }}
-                className="ml-auto text-[11px] text-amber-600 hover:text-amber-800 underline flex-shrink-0"
-              >
-                Retry
-              </button>
-            </motion.div>
-          )}
-
-          {/* Premium empty state */}
-          <motion.div
-            initial={{ opacity: 0, y: 24, filter: "blur(6px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center justify-center py-16 text-center"
-          >
-            {/* Animated orb */}
-            <div className="relative flex items-center justify-center mb-8">
-              {[1, 2, 3].map((i) => (
-                <motion.div
-                  key={i}
-                  className="absolute rounded-full border border-primary/15"
-                  style={{ width: 60 + i * 36, height: 60 + i * 36 }}
-                  animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.15, 0.4] }}
-                  transition={{ duration: 3.5, repeat: Infinity, delay: i * 0.8, ease: "easeInOut" }}
-                />
-              ))}
-              <motion.div
-                className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/20 to-secondary/15 flex items-center justify-center"
-                animate={{ scale: [1, 1.04, 1] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <span className="text-4xl select-none">🌿</span>
-              </motion.div>
-            </div>
-
-            {/* Headline */}
-            <motion.h2
-              className="text-2xl md:text-3xl font-semibold tracking-tight mb-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              No emotional wellness records yet
-            </motion.h2>
-
-            <motion.p
-              className="text-muted-foreground text-sm max-w-md leading-relaxed mb-8"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              Patient emotional wellness history will appear here once users complete
-              their emotional assessments on MANAS. Each completed assessment is
-              automatically stored and surfaced in this portal.
-            </motion.p>
-
-            {/* Onboarding steps */}
-            <motion.div
-              className="grid sm:grid-cols-3 gap-4 max-w-2xl w-full mb-8"
-              initial="hidden"
-              animate="visible"
-              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.35 } } }}
-            >
-              {[
-                { step: "01", icon: "😊", title: "User Completes Check-In", desc: "User selects their emotional state and shares context on MANAS." },
-                { step: "02", icon: "🧠", title: "AI Assessment Runs",      desc: "RoBERTa analyses emotions, Gemini generates personalised questions." },
-                { step: "03", icon: "📊", title: "Data Appears Here",       desc: "Completed assessments are stored in Firestore and visible in this portal." },
-              ].map((item) => (
-                <motion.div
-                  key={item.step}
-                  variants={{
-                    hidden:  { opacity: 0, y: 16, filter: "blur(4px)" },
-                    visible: { opacity: 1, y: 0,  filter: "blur(0px)", transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
-                  }}
-                  className="rounded-2xl p-5 text-left"
-                  style={{
-                    background: "rgba(255,255,255,0.6)",
-                    backdropFilter: "blur(16px)",
-                    border: "1px solid rgba(255,255,255,0.5)",
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-bold text-primary/40">{item.step}</span>
-                    <span className="text-xl">{item.icon}</span>
-                  </div>
-                  <h3 className="text-sm font-semibold mb-1.5">{item.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {/* Reassurance note */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.65 }}
-              className="rounded-2xl px-5 py-3.5 text-xs text-muted-foreground/70 leading-relaxed max-w-lg"
-              style={{ background: "rgba(0,0,0,0.025)", border: "1px solid rgba(0,0,0,0.05)" }}
-            >
-              <strong className="text-muted-foreground/90">Note:</strong> This portal reads from Firestore in real time.
-              If you've recently completed assessments and they're not appearing, ensure the Firestore
-              collection group index is deployed — see <code className="font-mono text-[10px] bg-muted px-1 rounded">firestore.indexes.json</code> in the project root.
-            </motion.div>
-          </motion.div>
-        </div>
-      </PageTransition>
-    );
-  }
-
-  const patient = selectedPatient ?? patients[0];
-  const trendCfg = TREND_CONFIG[patient.trend];
-  const insight = generateWellnessInsight(patient);
-  const chartData = buildChartHistory(patient);
-  const latest = patient.latestAssessment;
+  const tabStyle = (t) => ({
+    padding:"0.5rem 1.1rem", borderRadius:20, border:"none", cursor:"pointer", fontWeight:600, fontSize:"0.82rem",
+    background: tab===t ? "linear-gradient(135deg,#0ea5e9,#06b6d4)" : "rgba(0,0,0,0.05)",
+    color: tab===t ? "white" : "#6b7280",
+  });
 
   return (
-    <PageTransition>
-      <div className="container mx-auto max-w-7xl px-6 py-8">
-        <DoctorHeader />
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f9ff,#ecfeff,#f0fdf4)",padding:"1.5rem"}}>
+      {showAdd && <AddPatientModal onAdd={addPatient} onClose={()=>setShowAdd(false)} />}
+      <div style={{maxWidth:1200,margin:"0 auto"}}>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* ── Patient List ─────────────────────────────────────── */}
-          <div className="lg:col-span-1">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                Patients ({patients.length})
-              </h2>
+        {/* Header */}
+        <motion.div initial={{opacity:0,y:-16}} animate={{opacity:1,y:0}} style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"1.5rem",flexWrap:"wrap",gap:"1rem"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
+            <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#0ea5e9,#06b6d4)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(6,182,212,0.3)"}}>
+              <Brain size={22} color="white" />
             </div>
-            <motion.div
-              className="space-y-2"
-              initial="hidden"
-              animate="visible"
-              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
-            >
-              {patients.map((p) => {
-                const cfg = TREND_CONFIG[p.trend];
-                const isSelected = selectedPatient?.uid === p.uid;
+            <div>
+              <h1 style={{fontSize:"1.2rem",fontWeight:800,color:"#0f172a"}}>Doctor / Therapist Portal</h1>
+              <p style={{fontSize:"0.78rem",color:"#6b7280"}}>MindEase AI · Patient Wellness Monitoring</p>
+            </div>
+          </div>
+          <button onClick={()=>setShowAdd(true)} style={{display:"flex",alignItems:"center",gap:"0.4rem",padding:"0.6rem 1.2rem",borderRadius:20,background:"linear-gradient(135deg,#0ea5e9,#06b6d4)",color:"white",border:"none",fontWeight:700,cursor:"pointer",fontSize:"0.85rem",boxShadow:"0 4px 16px rgba(6,182,212,0.3)"}}>
+            <Plus size={16} /> Add Patient
+          </button>
+        </motion.div>
+
+        <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:"1.25rem"}}>
+
+          {/* Patient List */}
+          <div>
+            <p style={{fontSize:"0.75rem",fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:"0.75rem"}}>Patients ({patients.length})</p>
+            <div style={{display:"flex",flexDirection:"column",gap:"0.5rem"}}>
+              {patients.map(pt => {
+                const tc = TREND_COLOR[pt.trend]||"#06b6d4";
+                const isSel = selected.id===pt.id;
                 return (
-                  <motion.button
-                    key={p.uid}
-                    onClick={() => setSelectedPatient(p)}
-                    variants={{
-                      hidden:  { opacity: 0, x: -12, filter: "blur(3px)" },
-                      visible: { opacity: 1, x: 0,   filter: "blur(0px)", transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
-                    }}
-                    whileHover={{ x: 4, transition: { duration: 0.2 } }}
-                    className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${
-                      isSelected
-                        ? "bg-primary/10 border-primary/30 shadow-sm"
-                        : "bg-card border-border hover:border-primary/20"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-primary">
-                            {p.displayName.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{p.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{p.sessionCount} session{p.sessionCount !== 1 ? "s" : ""}</p>
-                        </div>
+                  <motion.div key={pt.id} whileHover={{x:3}} onClick={()=>setSelected(pt)} style={{padding:"0.9rem 1rem",borderRadius:14,cursor:"pointer",background:isSel?"rgba(14,165,233,0.1)":"rgba(255,255,255,0.7)",border:isSel?"1.5px solid #0ea5e9":"1px solid rgba(255,255,255,0.6)",backdropFilter:"blur(12px)",transition:"all 0.2s"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <p style={{fontWeight:700,fontSize:"0.9rem",color:"#111827"}}>{pt.name}</p>
+                        <p style={{fontSize:"0.75rem",color:"#6b7280"}}>{pt.condition} · {pt.sessions} sessions</p>
                       </div>
-                      <ChevronRight size={14} className="text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <ChevronRight size={14} color="#9ca3af" />
                     </div>
-                    <div className="mt-2.5 flex items-center justify-between">
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                        {cfg.label}
-                      </span>
-                      <span className="text-xs font-semibold" style={{ color: p.avgWellnessScore >= 65 ? "#34d399" : p.avgWellnessScore >= 45 ? "#fb923c" : "#f87171" }}>
-                        {p.avgWellnessScore}/100
-                      </span>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"0.5rem"}}>
+                      <span style={{fontSize:"0.7rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:tc+"18",color:tc,border:`1px solid ${tc}30`}}>{pt.trend}</span>
+                      <span style={{fontSize:"0.8rem",fontWeight:800,color:pt.score>=65?"#10b981":pt.score>=45?"#fb923c":"#f87171"}}>{pt.score}/100</span>
                     </div>
-                  </motion.button>
+                  </motion.div>
                 );
               })}
-            </motion.div>
+            </div>
           </div>
 
-          {/* ── Patient Detail ───────────────────────────────────── */}
+          {/* Patient Detail */}
           <AnimatePresence mode="wait">
-            <motion.div
-              key={patient.uid}
-              initial={{ opacity: 0, x: 20, filter: "blur(5px)" }}
-              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, x: -20, filter: "blur(3px)" }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="lg:col-span-2 space-y-5"
-            >
-              {/* Patient header */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="p-5 rounded-2xl bg-card border border-border"
-              >
-                <div className="flex items-start justify-between mb-3">
+            <motion.div key={p.id} initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-20}} style={{display:"flex",flexDirection:"column",gap:"1rem"}}>
+
+              {/* Patient Header Card */}
+              <div style={{background:"rgba(255,255,255,0.8)",backdropFilter:"blur(20px)",borderRadius:20,padding:"1.25rem",border:"1px solid rgba(255,255,255,0.6)",boxShadow:"0 4px 20px rgba(0,0,0,0.06)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"0.5rem"}}>
                   <div>
-                    <h2 className="text-xl font-semibold">{patient.displayName}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">{patient.email}</p>
+                    <h2 style={{fontSize:"1.3rem",fontWeight:800,color:"#0f172a"}}>{p.name}</h2>
+                    <p style={{fontSize:"0.82rem",color:"#6b7280"}}>Age {p.age} · {p.condition} · {p.sessions} sessions</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary">{patient.avgWellnessScore}</p>
-                    <p className="text-xs text-muted-foreground">Avg Wellness</p>
+                  <div style={{textAlign:"right"}}>
+                    <p style={{fontSize:"2rem",fontWeight:900,color:tColor,lineHeight:1}}>{p.score}</p>
+                    <p style={{fontSize:"0.72rem",color:"#6b7280"}}>Wellness Score</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${trendCfg.bg} ${trendCfg.color} ${trendCfg.border}`}>
-                    <trendCfg.icon size={11} />
-                    {trendCfg.label}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{patient.sessionCount} total sessions</span>
-                  <span className="text-xs text-muted-foreground capitalize">
-                    Latest: {latest.dominantEmotion} · {latest.assessmentLevel}
+                <div style={{display:"flex",gap:"0.5rem",marginTop:"0.75rem",flexWrap:"wrap"}}>
+                  <span style={{display:"flex",alignItems:"center",gap:"0.3rem",fontSize:"0.75rem",fontWeight:700,padding:"4px 10px",borderRadius:20,background:tColor+"18",color:tColor,border:`1px solid ${tColor}30`}}>
+                    <TIcon size={11} /> {p.trend}
                   </span>
                 </div>
-              </motion.div>
+              </div>
 
-              {/* Wellness indicators */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="grid grid-cols-3 gap-3"
-              >
-                {[
-                  { label: "Emotional Balance", value: latest.emotionalBalance,    icon: "⚖️" },
-                  { label: "Stress Level",       value: latest.stressIndicator,    icon: "⚡" },
-                  { label: "Burnout Risk",        value: latest.burnoutRisk,        icon: "🔋" },
-                  { label: "Sleep Wellness",      value: latest.sleepWellness,      icon: "🌙" },
-                  { label: "Resilience",          value: latest.emotionalResilience,icon: "🛡️" },
-                  { label: "Social Connect.",     value: latest.socialConnectivity, icon: "💬" },
-                ].map((ind, i) => {
-                  const color = ind.value >= 65 ? "#34d399" : ind.value >= 45 ? "#fb923c" : "#f87171";
-                  return (
-                    <motion.div
-                      key={ind.label}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.12 + i * 0.05 }}
-                      className="p-3 rounded-xl bg-card border border-border text-center"
-                    >
-                      <div className="text-lg mb-1">{ind.icon}</div>
-                      <p className="text-base font-bold" style={{ color }}>{ind.value}%</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{ind.label}</p>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
+              {/* Tabs */}
+              <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
+                {["overview","chart","notes","report"].map(t=>(
+                  <button key={t} onClick={()=>setTab(t)} style={tabStyle(t)}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
+                ))}
+              </div>
 
-              {/* Emotional trend chart */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.18 }}
-                className="p-5 rounded-2xl bg-card border border-border"
-              >
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                  <TrendingUp size={15} className="text-primary" />
-                  Emotional Wellness Progression
-                </h3>
-                {chartData.length > 1 ? (
-                  <ResponsiveContainer width="100%" height={160}>
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="wellnessGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="stressGrad2" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#f87171" stopOpacity={0.2} />
-                          <stop offset="95%" stopColor="#f87171" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="session" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }} />
-                      <Area type="monotone" dataKey="score"  stroke="hsl(var(--primary))" fill="url(#wellnessGrad)" strokeWidth={2.5} dot={{ fill: "hsl(var(--primary))", r: 4 }} name="Wellness" />
-                      <Area type="monotone" dataKey="stress" stroke="#f87171" fill="url(#stressGrad2)" strokeWidth={2} dot={{ fill: "#f87171", r: 3 }} strokeDasharray="5 3" name="Stress" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-[160px] flex items-center justify-center text-sm text-muted-foreground">
-                    More sessions needed to show trend
-                  </div>
-                )}
-              </motion.div>
-
-              {/* AI Wellness Insight */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.24 }}
-                className="p-5 rounded-2xl glass-card"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary flex-shrink-0">
-                    <Brain size={16} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">AI Wellness Insight</p>
-                    <p className="text-sm text-foreground leading-relaxed">{insight}</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-2">
-                      Based on {patient.sessionCount} assessment{patient.sessionCount !== 1 ? "s" : ""}. Not a clinical diagnosis.
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Assessment history */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <FileText size={15} className="text-primary" />
-                  Assessment History
-                </h3>
-                <motion.div
-                  className="space-y-3"
-                  initial="hidden"
-                  animate="visible"
-                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08 } } }}
-                >
-                  {patient.allAssessments.slice(0, 5).map((assessment, i) => {
-                    const ts = assessment.timestamp as { toDate?: () => Date } | null;
-                    const dateStr = ts?.toDate
-                      ? ts.toDate().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                      : "Recent";
-                    const moodEmoji = assessment.selectedMood === "happy" ? "😊" : assessment.selectedMood === "sad" ? "😔" : "😐";
-                    const levelColor = assessment.assessmentLevel === "elevated" ? "#f87171" : assessment.assessmentLevel === "moderate" ? "#fb923c" : "#34d399";
+              {/* Tab Content */}
+              {tab==="overview" && (
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:"0.75rem"}}>
+                  {indicators.map(ind => {
+                    const c = ind.val>=65?"#10b981":ind.val>=45?"#fb923c":"#f87171";
                     return (
-                      <motion.div
-                        key={i}
-                        variants={{
-                          hidden:  { opacity: 0, y: 10, filter: "blur(3px)" },
-                          visible: { opacity: 1, y: 0,  filter: "blur(0px)", transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
-                        }}
-                        className="p-4 rounded-xl bg-card border border-border"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{moodEmoji}</span>
-                            <div>
-                              <span className="text-xs font-semibold capitalize text-foreground/80">{assessment.dominantEmotion}</span>
-                              <span className="text-xs text-muted-foreground ml-2">· Wellness {assessment.wellnessScore}/100</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                              style={{ background: `${levelColor}15`, color: levelColor, border: `1px solid ${levelColor}30` }}
-                            >
-                              {assessment.assessmentLevel}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground/60">{dateStr}</span>
-                          </div>
+                      <motion.div key={ind.label} whileHover={{y:-3}} style={{background:"rgba(255,255,255,0.8)",backdropFilter:"blur(16px)",borderRadius:16,padding:"1rem",textAlign:"center",border:"1px solid rgba(255,255,255,0.6)",boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
+                        <div style={{fontSize:"1.4rem",marginBottom:"0.3rem"}}>{ind.icon}</div>
+                        <p style={{fontSize:"1.4rem",fontWeight:800,color:c,lineHeight:1}}>{ind.val}%</p>
+                        <p style={{fontSize:"0.7rem",color:"#6b7280",marginTop:"0.2rem",lineHeight:1.3}}>{ind.label}</p>
+                        <div style={{height:4,borderRadius:4,background:"#f3f4f6",marginTop:"0.5rem",overflow:"hidden"}}>
+                          <motion.div initial={{width:0}} animate={{width:`${ind.val}%`}} transition={{duration:0.8,ease:"easeOut"}} style={{height:"100%",background:c,borderRadius:4}} />
                         </div>
-                        {assessment.reflection && (
-                          <p className="text-xs text-muted-foreground leading-relaxed italic line-clamp-2">
-                            "{assessment.reflection}"
-                          </p>
-                        )}
                       </motion.div>
                     );
                   })}
-                </motion.div>
-              </motion.div>
+                </div>
+              )}
 
-              <Button className="rounded-full gap-2 bg-gradient-to-r from-primary to-secondary hover:opacity-90" data-testid="button-schedule-session">
-                <Calendar size={15} /> Schedule Next Session
-              </Button>
+              {tab==="chart" && (
+                <div style={{background:"rgba(255,255,255,0.8)",backdropFilter:"blur(20px)",borderRadius:20,padding:"1.25rem",border:"1px solid rgba(255,255,255,0.6)"}}>
+                  <p style={{fontWeight:700,fontSize:"0.9rem",marginBottom:"0.25rem",display:"flex",alignItems:"center",gap:"0.4rem"}}><TrendingUp size={15} color="#0ea5e9" /> Emotional Wellness Progression</p>
+                  <p style={{fontSize:"0.75rem",color:"#6b7280",marginBottom:"1rem"}}>Session-by-session wellness & stress tracking</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={p.history}>
+                      <defs>
+                        <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/><stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/></linearGradient>
+                        <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f87171" stopOpacity={0.25}/><stop offset="95%" stopColor="#f87171" stopOpacity={0}/></linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                      <XAxis dataKey="s" tick={{fontSize:11}} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0,100]} tick={{fontSize:11}} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{borderRadius:12,fontSize:12,border:"1px solid rgba(0,0,0,0.08)"}} />
+                      <Area type="monotone" dataKey="score" stroke="#0ea5e9" fill="url(#wg)" strokeWidth={2.5} dot={{fill:"#0ea5e9",r:4}} name="Wellness Score" />
+                      <Area type="monotone" dataKey="stress" stroke="#f87171" fill="url(#sg)" strokeWidth={2} strokeDasharray="5 3" dot={{fill:"#f87171",r:3}} name="Stress Level" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                  <div style={{display:"flex",gap:"1.5rem",marginTop:"0.75rem"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"0.4rem"}}><div style={{width:12,height:3,background:"#0ea5e9",borderRadius:2}} /><span style={{fontSize:"0.72rem",color:"#6b7280"}}>Wellness</span></div>
+                    <div style={{display:"flex",alignItems:"center",gap:"0.4rem"}}><div style={{width:12,height:3,background:"#f87171",borderRadius:2}} /><span style={{fontSize:"0.72rem",color:"#6b7280"}}>Stress</span></div>
+                  </div>
+                </div>
+              )}
+
+              {tab==="notes" && (
+                <div style={{background:"rgba(255,255,255,0.8)",backdropFilter:"blur(20px)",borderRadius:20,padding:"1.25rem",border:"1px solid rgba(255,255,255,0.6)"}}>
+                  <p style={{fontWeight:700,fontSize:"0.9rem",marginBottom:"1rem",display:"flex",alignItems:"center",gap:"0.4rem"}}><FileText size={15} color="#0ea5e9" /> Session Notes</p>
+                  <div style={{background:"#f8fafc",borderRadius:12,padding:"1rem",marginBottom:"1rem",fontSize:"0.88rem",color:"#374151",lineHeight:1.6,minHeight:60}}>
+                    {p.notes || "No notes yet."}
+                  </div>
+                  <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder="Add new session note..." rows={3}
+                    style={{width:"100%",padding:"0.75rem",borderRadius:12,border:"1px solid #e5e7eb",fontSize:"0.88rem",resize:"vertical",outline:"none",boxSizing:"border-box",fontFamily:"inherit"}} />
+                  <button onClick={saveNote} style={{marginTop:"0.75rem",padding:"0.6rem 1.5rem",borderRadius:20,background:"linear-gradient(135deg,#0ea5e9,#06b6d4)",color:"white",border:"none",fontWeight:700,cursor:"pointer",fontSize:"0.85rem"}}>
+                    Save Note
+                  </button>
+                </div>
+              )}
+
+              {tab==="report" && (
+                <div style={{background:"rgba(255,255,255,0.8)",backdropFilter:"blur(20px)",borderRadius:20,padding:"1.25rem",border:"1px solid rgba(255,255,255,0.6)"}}>
+                  <p style={{fontWeight:700,fontSize:"0.9rem",marginBottom:"1rem",display:"flex",alignItems:"center",gap:"0.4rem"}}><Brain size={15} color="#0ea5e9" /> AI-Generated Patient Report</p>
+                  <div style={{background:"linear-gradient(135deg,rgba(14,165,233,0.06),rgba(6,182,212,0.06))",borderRadius:14,padding:"1rem",border:"1px solid rgba(14,165,233,0.15)",marginBottom:"1rem"}}>
+                    <p style={{fontSize:"0.88rem",color:"#374151",lineHeight:1.7}}>
+                      <strong>{p.name}</strong> ({p.condition}) has completed <strong>{p.sessions} sessions</strong> with a current wellness score of <strong style={{color:tColor}}>{p.score}/100</strong>.
+                      Emotional trend is <strong style={{color:tColor}}>{p.trend}</strong>.
+                      {p.trend==="declining" ? " ⚠️ Immediate attention recommended — stress and burnout indicators are elevated." : p.trend==="improving" ? " ✅ Patient is responding positively to current support approach." : " 📊 Patient is maintaining a stable emotional baseline."}
+                      {" "}Stress level: <strong>{p.stress}%</strong> · Burnout risk: <strong>{p.burnout}%</strong> · Sleep wellness: <strong>{p.sleep}%</strong>.
+                    </p>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.75rem"}}>
+                    {[["Risk Level",p.score<50?"High":p.score<65?"Moderate":"Low",p.score<50?"#f87171":p.score<65?"#fb923c":"#10b981"],["Sessions",p.sessions,"#0ea5e9"],["Avg Stress",p.stress+"%",p.stress>65?"#f87171":"#10b981"],["Sleep",p.sleep+"%",p.sleep<50?"#f87171":"#10b981"]].map(([l,v,c])=>(
+                      <div key={l} style={{background:"rgba(0,0,0,0.025)",borderRadius:12,padding:"0.75rem",border:"1px solid rgba(0,0,0,0.05)"}}>
+                        <p style={{fontSize:"0.72rem",color:"#6b7280",marginBottom:"0.2rem"}}>{l}</p>
+                        <p style={{fontSize:"1.1rem",fontWeight:800,color:c}}>{v}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <button style={{marginTop:"1rem",padding:"0.6rem 1.5rem",borderRadius:20,background:"rgba(14,165,233,0.1)",color:"#0ea5e9",border:"1px solid rgba(14,165,233,0.3)",fontWeight:700,cursor:"pointer",fontSize:"0.85rem"}}>
+                    �� Export PDF Report
+                  </button>
+                </div>
+              )}
+
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
-    </PageTransition>
+    </div>
   );
 }

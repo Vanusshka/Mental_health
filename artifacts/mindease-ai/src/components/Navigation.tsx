@@ -21,6 +21,7 @@ export default function Navigation() {
     { label: "Dashboard",   path: "/dashboard" },
     { label: "Experts",     path: "/experts" },
     { label: "Doctor Portal", path: "/doctor" },
+    { label: "Org Portal",  path: "/org" },
   ];
 
   const accentColor = moodTheme?.accent ?? "hsl(var(--primary))";
@@ -63,7 +64,7 @@ export default function Navigation() {
               />
             </motion.div>
             <span className="text-xl font-semibold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              MANAS
+              MindEase AI
             </span>
           </Link>
 

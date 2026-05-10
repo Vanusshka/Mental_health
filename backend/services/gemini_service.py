@@ -1,129 +1,57 @@
-"""
-Gemini Questionnaire Service
------------------------------
-Uses Google Gemini to generate empathetic, contextually aware follow-up
-questions based on the user's text and detected emotions.
-
-Model cascade: tries models in order until one succeeds.
-Handles 429 quota exhaustion gracefully.
-"""
-
-import os
-import json
-import logging
-import re
+﻿import os, json, logging, re
 from typing import List, Dict
-
-from google import genai
-from google.genai import types
-from google.genai.errors import ClientError
-
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Model cascade — ordered by preference, falls back on 429
-# ---------------------------------------------------------------------------
-_MODEL_CASCADE = [
-    "gemini-2.5-flash-lite",   # lightest quota usage — try first
-    "gemini-2.5-flash",        # standard
-    "gemini-2.0-flash-lite",   # older lite
-    "gemini-2.0-flash",        # older standard
-]
+_MODEL_CASCADE = ["gemini-2.5-flash-lite","gemini-2.5-flash","gemini-2.0-flash-lite","gemini-2.0-flash"]
+_client = None
 
-_client: genai.Client | None = None
+FALLBACK_QUESTIONS = {
+    "sadness":     ["How long have you been feeling this way?","Is there someone you trust that you can talk to about this?","What is one small thing that usually brings you comfort?"],
+    "nervousness": ["What feels most overwhelming to you right now?","Have you been able to get enough rest lately?","What would help you feel a little safer in this moment?"],
+    "anger":       ["What triggered these feelings today?","How is this affecting your daily routine?","What would help you release some of this tension?"],
+    "joy":         ["What made today feel so positive?","How can you carry this energy forward?","Who would you like to share this feeling with?"],
+    "default":     ["How long have you been experiencing these feelings?","How is this affecting your sleep and daily energy?","What kind of support would feel most helpful right now?"],
+}
 
-
-def _get_client() -> genai.Client:
+def _get_client():
     global _client
     if _client is None:
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        if not api_key or api_key == "your_gemini_api_key_here":
-            raise ValueError(
-                "GEMINI_API_KEY is not set. "
-                "Add your key to backend/.env and restart the server."
-            )
-        _client = genai.Client(api_key=api_key)
-        logger.info("Gemini client initialised.")
+        api_key = os.getenv("GEMINI_API_KEY","")
+        if not api_key or api_key in ("your_gemini_api_key_here","demo_key",""):
+            return None
+        try:
+            from google import genai
+            _client = genai.Client(api_key=api_key)
+        except Exception:
+            return None
     return _client
 
-
-def _build_prompt(user_text: str, emotions: List[Dict]) -> str:
-    top_emotions = emotions[:3]
-    emotion_lines = "\n".join(
-        f"  - {e['label']} ({round(e['score'] * 100)}% confidence)"
-        for e in top_emotions
-    )
-    dominant = top_emotions[0]["label"] if top_emotions else "unknown"
-    intensity = top_emotions[0]["score"] if top_emotions else 0.5
-    intensity_word = (
-        "very strongly" if intensity > 0.75
-        else "moderately" if intensity > 0.45
-        else "mildly"
-    )
-
-    return f"""You are a compassionate mental wellness guide. A user has shared how they are feeling.
-
-User's message: "{user_text}"
-
-Detected emotions:
-{emotion_lines}
-
-The dominant emotion is "{dominant}", felt {intensity_word}.
-
-Generate exactly 3 short, warm, empathetic follow-up questions to help the user reflect on their feelings.
-
-Rules:
-- Sound human and caring, never clinical
-- Be specific to the user's words and emotions
-- Do NOT diagnose or suggest medication
-- One question per feeling: duration, support, daily impact
-- Keep each question under 20 words
-
-Respond ONLY with valid JSON, no markdown:
-{{"questions": ["question 1", "question 2", "question 3"]}}"""
-
-
 async def generate_questions(user_text: str, emotions: List[Dict]) -> List[str]:
-    """
-    Generate empathetic follow-up questions using Gemini.
-    Tries models in cascade order to handle quota exhaustion.
-    """
     client = _get_client()
-    prompt = _build_prompt(user_text, emotions)
-    last_error: Exception | None = None
-
+    dominant = emotions[0]["label"] if emotions else "default"
+    
+    if client is None:
+        logger.info("No Gemini key — using fallback questions")
+        return FALLBACK_QUESTIONS.get(dominant, FALLBACK_QUESTIONS["default"])
+    
+    from google.genai import types
+    from google.genai.errors import ClientError
+    prompt = f"""Compassionate wellness guide. User said: "{user_text}". Top emotion: {dominant}.
+Generate exactly 3 short empathetic follow-up questions (under 20 words each).
+JSON only: {{"questions":["...","...","..."]}}"""
+    
     for model in _MODEL_CASCADE:
         try:
-            logger.info("Trying model %s for questions", model)
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.7,
-                    max_output_tokens=1024,
-                    response_mime_type="application/json",
-                ),
-            )
-            raw_text = response.text.strip()
-            clean = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.MULTILINE).strip()
+            response = client.models.generate_content(model=model, contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=256, response_mime_type="application/json"))
+            clean = re.sub(r"^```(?:json)?\s*|\s*```$","",response.text.strip(),flags=re.MULTILINE).strip()
             data = json.loads(clean)
-            questions: List[str] = data.get("questions", [])
-            if not questions or not isinstance(questions, list):
-                raise ValueError("'questions' key missing or not a list.")
-            logger.info("Questions generated successfully with model %s", model)
-            return [str(q).strip() for q in questions[:3]]
-
-        except ClientError as exc:
-            status = getattr(exc, "status_code", 500)
+            qs = data.get("questions",[])
+            if qs and isinstance(qs, list):
+                return [str(q) for q in qs[:3]]
+        except Exception as exc:
+            status = getattr(exc,"status_code",500)
             if status == 429:
-                logger.warning("Model %s quota exhausted, trying next…", model)
-                last_error = exc
-                continue  # try next model
-            raise  # non-quota error — propagate immediately
-
-        except (json.JSONDecodeError, ValueError) as exc:
-            logger.error("Parse error from model %s: %s", model, exc)
-            raise RuntimeError(f"Gemini returned an unexpected format: {exc}") from exc
-
-    # All models exhausted
-    raise ClientError(429, {"error": {"message": "All Gemini models are rate-limited. Please try again in a few minutes."}}, None) from last_error  # type: ignore[arg-type]
+                continue
+            break
+    return FALLBACK_QUESTIONS.get(dominant, FALLBACK_QUESTIONS["default"])

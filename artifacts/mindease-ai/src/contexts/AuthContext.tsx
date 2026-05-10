@@ -65,20 +65,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged_internal(async (firebaseUser) => {
-      setUser(firebaseUser);
+    // Only subscribe to auth state if Firebase is properly configured
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = onAuthStateChanged_internal(async (firebaseUser) => {
+        setUser(firebaseUser);
+        setLoading(false);
+        await fetchRole(firebaseUser);
+      });
+
+      checkRedirectResult().then(async (redirectUser) => {
+        if (redirectUser) {
+          setUser(redirectUser);
+          await fetchRole(redirectUser);
+        }
+      });
+    } catch {
       setLoading(false);
-      await fetchRole(firebaseUser);
-    });
+    }
 
-    checkRedirectResult().then(async (redirectUser) => {
-      if (redirectUser) {
-        setUser(redirectUser);
-        await fetchRole(redirectUser);
-      }
-    });
-
-    return unsubscribe;
+    return () => unsubscribe?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configured]);
 

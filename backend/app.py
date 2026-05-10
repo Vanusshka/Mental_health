@@ -14,6 +14,7 @@ from routes.mood import router as mood_router
 from routes.health import router as health_router
 from routes.questionnaire import router as questionnaire_router
 from routes.context_response import router as context_response_router
+from routes.workshops import router as workshops_router
 
 # Load environment variables from .env file before anything else
 load_dotenv()
@@ -60,3 +61,4 @@ app.include_router(health_router, tags=["Health"])
 app.include_router(mood_router, prefix="/analyze-mood", tags=["Mood Analysis"])
 app.include_router(questionnaire_router, prefix="/generate-questions", tags=["Questionnaire"])
 app.include_router(context_response_router, prefix="/generate-response", tags=["Context Response"])
+app.include_router(workshops_router, prefix="/workshops", tags=["Workshops"])
