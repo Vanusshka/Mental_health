@@ -2,8 +2,9 @@
  * ProtectedRoute
  * ─────────────────────────────────────────────────────────────────────────
  * Wraps routes that require authentication.
- * Shows a calming loading state while Firebase restores the session.
- * Redirects unauthenticated users to /login.
+ * Also handles role-based redirects:
+ *   - No role yet → /role-select
+ *   - Role exists → correct space (patient → /checkin, doctor → /doctor)
  */
 
 import { motion } from "framer-motion";
@@ -13,14 +14,16 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  /** If set, only users with this role can access. Others are redirected. */
+  requiredRole?: "patient" | "doctor";
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading, isConfigured } = useAuth();
+export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+  const { user, loading, isConfigured, role, roleLoading } = useAuth();
   const [, navigate] = useLocation();
 
-  // While Firebase is restoring the session, show a minimal loading state
-  if (loading) {
+  // Show loading while Firebase restores session or role is being fetched
+  if (loading || (user && roleLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <motion.div
@@ -55,9 +58,21 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <>{children}</>;
   }
 
-  // Not authenticated — redirect to login
+  // Not authenticated → login
   if (!user) {
     navigate("/login");
+    return null;
+  }
+
+  // Authenticated but no role yet → role selection
+  if (!role) {
+    navigate("/role-select");
+    return null;
+  }
+
+  // Role mismatch — redirect to the correct space
+  if (requiredRole && role !== requiredRole) {
+    navigate(role === "doctor" ? "/doctor" : "/checkin");
     return null;
   }
 

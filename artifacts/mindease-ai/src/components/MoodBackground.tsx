@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMood } from "@/contexts/MoodContext";
 
+// Map mood → public video path
+const MOOD_VIDEOS: Record<string, string> = {
+  happy:   "/happy.mp4",
+  neutral: "/neutral.mp4",
+  sad:     "/sad.mp4",
+};
+
 interface Particle {
   id: number;
   x: number;
@@ -41,8 +48,38 @@ export default function MoodBackground() {
   const defaultGradient =
     "radial-gradient(ellipse at 20% 30%, #f3f0ff 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, #e8f4fd 0%, transparent 50%), linear-gradient(145deg, #f8f6ff 0%, #f0f4ff 100%)";
 
+  // Resolve video src — null when no mood selected
+  const videoSrc = mood ? MOOD_VIDEOS[mood] ?? null : null;
+
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+
+      {/* ── Mood video layer — renders behind gradient blobs ─────── */}
+      {/* Key on videoSrc forces React to unmount/remount the <video>  */}
+      {/* element when the mood changes, triggering fresh autoplay.    */}
+      <AnimatePresence mode="sync">
+        {videoSrc && (
+          <motion.div
+            key={videoSrc}
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.4, ease: "easeInOut" }}
+          >
+            <video
+              key={videoSrc}
+              src={videoSrc}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ opacity: 0.35 }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Animated gradient base */}
       <motion.div
         className="absolute inset-0"
@@ -55,7 +92,7 @@ export default function MoodBackground() {
       {/* Blob 1 — top left */}
       <motion.div
         className="absolute rounded-full blur-[80px]"
-        style={{ width: "55vw", height: "55vw", top: "-15%", left: "-15%", opacity: 0.45 }}
+        style={{ width: "55vw", height: "55vw", top: "-15%", left: "-15%", opacity: 0.32 }}
         animate={{
           background: theme
             ? `radial-gradient(circle, ${theme.bg1}, transparent 70%)`
@@ -69,7 +106,7 @@ export default function MoodBackground() {
       {/* Blob 2 — bottom right */}
       <motion.div
         className="absolute rounded-full blur-[80px]"
-        style={{ width: "45vw", height: "45vw", bottom: "-12%", right: "-10%", opacity: 0.45 }}
+        style={{ width: "45vw", height: "45vw", bottom: "-12%", right: "-10%", opacity: 0.32 }}
         animate={{
           background: theme
             ? `radial-gradient(circle, ${theme.bg2}, transparent 70%)`

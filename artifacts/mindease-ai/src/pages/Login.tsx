@@ -25,13 +25,19 @@ const WELLNESS_PILLARS = [
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState<string | null>(null);
-  const { user, isConfigured }    = useAuth();
+  const { user, isConfigured, role, roleLoading } = useAuth();
   const [, navigate]              = useLocation();
 
-  // Redirect already-authenticated users
+  // Redirect already-authenticated users based on their role
   useEffect(() => {
-    if (user) navigate("/checkin");
-  }, [user, navigate]);
+    if (!user) return;
+    // If role is still loading, wait
+    if (roleLoading) return;
+    // No role yet → go to role selection
+    if (!role) { navigate("/role-select"); return; }
+    // Role exists → go to the right space
+    navigate(role === "doctor" ? "/doctor" : "/checkin");
+  }, [user, role, roleLoading, navigate]);
 
   async function handleGoogleSignIn() {
     if (!isConfigured) {

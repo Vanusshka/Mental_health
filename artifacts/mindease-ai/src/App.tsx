@@ -16,6 +16,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 // Pages
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
+import RoleSelection from "@/pages/RoleSelection";
 import CheckIn from "@/pages/CheckIn";
 import Dashboard from "@/pages/Dashboard";
 import Experts from "@/pages/Experts";
@@ -32,8 +33,9 @@ function Router() {
     <AnimatePresence mode="wait">
       <Switch location={location} key={location}>
         {/* Public routes */}
-        <Route path="/"      component={Home}  />
-        <Route path="/login" component={Login} />
+        <Route path="/"            component={Home}  />
+        <Route path="/login"       component={Login} />
+        <Route path="/role-select" component={RoleSelection} />
 
         {/* Protected routes — require authentication */}
         <Route path="/checkin">
