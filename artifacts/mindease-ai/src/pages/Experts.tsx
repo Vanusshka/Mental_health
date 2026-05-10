@@ -77,6 +77,9 @@ function InitialsAvatar({ initials, gradient }: { initials: string; gradient: st
   );
 }
 
+// Shared ease tuple
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
 export default function Experts() {
   const [selectedSpecialty, setSelectedSpecialty] = useState("All");
   const [selectedAvailability, setSelectedAvailability] = useState("All");
@@ -90,37 +93,51 @@ export default function Experts() {
   return (
     <PageTransition>
       <div className="container mx-auto max-w-6xl px-6 py-12">
-        <div className="text-center mb-10">
+
+        {/* ── Header — staggered blur-clear ─────────────────────── */}
+        <motion.div
+          className="text-center mb-10"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+          }}
+        >
           <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            variants={{
+              hidden:  { opacity: 0, filter: "blur(4px)" },
+              visible: { opacity: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE } },
+            }}
             className="text-sm font-medium text-primary uppercase tracking-widest mb-3"
           >
             Find Your Guide
           </motion.p>
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
+            variants={{
+              hidden:  { opacity: 0, y: 18, filter: "blur(5px)" },
+              visible: { opacity: 1, y: 0,  filter: "blur(0px)", transition: { duration: 0.65, ease: EASE } },
+            }}
             className="text-4xl font-semibold tracking-tight mb-3"
           >
             Connect with Wellness Experts
           </motion.h1>
           <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
+            variants={{
+              hidden:  { opacity: 0, filter: "blur(3px)" },
+              visible: { opacity: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE } },
+            }}
             className="text-muted-foreground max-w-xl mx-auto"
           >
             Vetted mental health professionals in Hyderabad — online, offline, and student-friendly options.
           </motion.p>
-        </div>
+        </motion.div>
 
-        {/* Filters */}
+        {/* ── Filters ───────────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
+          initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ delay: 0.3, duration: 0.55, ease: EASE }}
           className="flex flex-wrap gap-6 mb-8"
         >
           <div>
@@ -131,7 +148,7 @@ export default function Experts() {
                   key={s}
                   onClick={() => setSelectedSpecialty(s)}
                   data-testid={`filter-specialty-${s.toLowerCase()}`}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                     selectedSpecialty === s
                       ? "bg-primary text-white shadow-md shadow-primary/20"
                       : "bg-muted text-muted-foreground hover:bg-muted/70"
@@ -150,7 +167,7 @@ export default function Experts() {
                   key={a}
                   onClick={() => setSelectedAvailability(a)}
                   data-testid={`filter-availability-${a.toLowerCase()}`}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                     selectedAvailability === a
                       ? "bg-secondary text-white shadow-md"
                       : "bg-muted text-muted-foreground hover:bg-muted/70"
@@ -163,15 +180,25 @@ export default function Experts() {
           </div>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((expert, i) => (
+        {/* ── Expert cards — staggered float-up blur reveal ─────── */}
+        <motion.div
+          className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.09, delayChildren: 0.35 } },
+          }}
+        >
+          {filtered.map((expert) => (
             <motion.div
               key={expert.id}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08, duration: 0.5 }}
-              whileHover={{ y: -4, transition: { duration: 0.2 } }}
-              className="p-5 rounded-2xl bg-card border border-border hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
+              variants={{
+                hidden:  { opacity: 0, y: 28, filter: "blur(5px)" },
+                visible: { opacity: 1, y: 0,  filter: "blur(0px)", transition: { duration: 0.6, ease: EASE } },
+              }}
+              whileHover={{ y: -5, boxShadow: "0 16px 40px rgba(0,0,0,0.09)", transition: { duration: 0.25 } }}
+              className="p-5 rounded-2xl bg-card border border-border hover:border-primary/20 transition-colors duration-300"
               data-testid={`expert-card-${expert.id}`}
             >
               <div className="flex gap-4 mb-4">
@@ -236,13 +263,17 @@ export default function Experts() {
               </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {filtered.length === 0 && (
-          <div className="text-center py-20 text-muted-foreground">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-20 text-muted-foreground"
+          >
             <p className="text-lg font-medium">No experts match your filters</p>
             <p className="text-sm mt-2">Try adjusting the specialty or availability filters</p>
-          </div>
+          </motion.div>
         )}
       </div>
     </PageTransition>

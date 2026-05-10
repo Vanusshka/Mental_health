@@ -47,3 +47,10 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Environment / secrets — never commit real API keys
+.env
+.env.local
+.env.*.local
+backend/.env
+artifacts/mindease-ai/.env

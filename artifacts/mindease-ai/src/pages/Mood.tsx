@@ -57,7 +57,7 @@ const moodContent: Record<string, { icon: React.ElementType; title: string; desc
   ],
   sad: [
     { icon: Wind, title: "Breathing Exercise", desc: "Inhale 4 counts, hold 4, exhale 6. Repeat to calm your nervous system.", color: "from-indigo-400 to-violet-400" },
-    { icon: Brain, title: "Your AI is Here", desc: "You don't have to navigate this alone. MindEase AI listens with care.", color: "from-violet-400 to-purple-400" },
+    { icon: Brain, title: "Guided Assessment", desc: "You don't have to navigate this alone. MANAS will guide you through a personalised wellness assessment.", color: "from-violet-400 to-purple-400" },
     { icon: Moon, title: "Rest is Healing", desc: "Rest is not giving up. Rest is how you keep going.", color: "from-purple-400 to-indigo-400" },
     { icon: Music, title: "Soothing Sounds", desc: "Ambient music has started playing to help you feel supported.", color: "from-indigo-500 to-violet-500" },
   ],
@@ -108,7 +108,7 @@ export default function MoodPage() {
 
   function handleContinue() {
     if (selected === "happy") navigate("/dashboard");
-    else navigate("/chat");
+    else navigate("/checkin");
   }
 
   const activeMood = moods.find((m) => m.id === selected);
@@ -291,8 +291,8 @@ export default function MoodPage() {
                     {selected === "happy"
                       ? "View My Wellness Dashboard"
                       : selected === "neutral"
-                      ? "Start Focused Session"
-                      : "Talk to MindEase AI"}
+                      ? "Begin Wellness Assessment"
+                      : "Begin Emotional Assessment"}
                     <ChevronRight size={18} />
                   </Button>
                   <p className="mt-3 text-xs text-muted-foreground">

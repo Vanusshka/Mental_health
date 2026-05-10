@@ -1,23 +1,25 @@
 import { Link, useLocation } from "wouter";
 import { useTheme } from "./ThemeProvider";
-import { Moon, Sun, Menu, X, Brain } from "lucide-react";
+import { Moon, Sun, Menu, X, Brain, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMood } from "@/contexts/MoodContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { signOut } from "@/services/authService";
 
 export default function Navigation() {
   const [location] = useLocation();
   const { theme: colorTheme, setTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { theme: moodTheme } = useMood();
+  const { user } = useAuth();
 
   const navItems = [
-    { label: "Home", path: "/" },
-    { label: "Mood", path: "/mood" },
-    { label: "Chat", path: "/chat" },
-    { label: "Dashboard", path: "/dashboard" },
-    { label: "Experts", path: "/experts" },
+    { label: "Home",        path: "/" },
+    { label: "Check-In",    path: "/checkin" },
+    { label: "Dashboard",   path: "/dashboard" },
+    { label: "Experts",     path: "/experts" },
     { label: "Doctor Portal", path: "/doctor" },
   ];
 
@@ -38,6 +40,7 @@ export default function Navigation() {
     >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
             <motion.div
               className="rounded-xl p-1.5 transition-all duration-300"
@@ -59,10 +62,8 @@ export default function Navigation() {
                 className="transition-colors duration-700"
               />
             </motion.div>
-            <span
-              className="text-xl font-semibold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-700"
-            >
-              MindEase AI
+            <span className="text-xl font-semibold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              MANAS
             </span>
           </Link>
 
@@ -76,7 +77,7 @@ export default function Navigation() {
                   href={item.path}
                   className="relative text-sm font-medium transition-colors duration-300"
                   style={{ color: isActive ? accentColor : undefined }}
-                  data-testid={`nav-${item.label.toLowerCase().replace(" ", "-")}`}
+                  data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
                 >
                   <span className={!isActive ? "text-muted-foreground hover:text-foreground transition-colors" : ""}>
                     {item.label}
@@ -102,6 +103,35 @@ export default function Navigation() {
             >
               {colorTheme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
             </Button>
+
+            {/* User avatar + sign-out */}
+            {user && (
+              <div className="flex items-center gap-2 ml-1">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName ?? "User"}
+                    className="w-8 h-8 rounded-full border-2 border-white/60 shadow-sm"
+                  />
+                ) : (
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+                    style={{ background: accentColor }}
+                  >
+                    {(user.displayName ?? user.email ?? "U")[0].toUpperCase()}
+                  </div>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => signOut()}
+                  className="rounded-full w-8 h-8 text-muted-foreground hover:text-destructive transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut size={15} />
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Mobile Nav Toggle */}

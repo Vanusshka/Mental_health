@@ -219,8 +219,36 @@
     @apply border-border;
   }
 
+  html {
+    /* Lenis overrides this, but keep as fallback */
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    /* Prevent layout shift from scrollbar appearing */
+    overflow-x: hidden;
+    /* Improve text rendering for premium feel */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Lenis smooth scroll class */
+  html.lenis {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  .lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+  .lenis.lenis-scrolling iframe {
+    pointer-events: none;
   }
 }
 
@@ -352,5 +380,246 @@
   .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MANAS — Premium Polish Layer
+   Smooth interactions, ambient motion, typography rhythm, card depth.
+   These enhance the existing visual identity without changing it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Ambient background breathing ──────────────────────────────────────── */
+@keyframes ambient-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1)    translateY(0px); }
+  50%       { opacity: 0.70; transform: scale(1.04) translateY(-8px); }
+}
+
+@keyframes ambient-drift {
+  0%, 100% { transform: translateX(0px)  translateY(0px); }
+  33%       { transform: translateX(12px) translateY(-10px); }
+  66%       { transform: translateX(-8px) translateY(6px); }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0%   50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes soft-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%       { box-shadow: 0 0 32px 4px rgba(99, 102, 241, 0.08); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0);   }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Scroll reveal utility classes ─────────────────────────────────────── */
+/* Applied via JS/Framer Motion — these are fallback CSS versions */
+.reveal-up {
+  animation: fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.reveal-fade {
+  animation: fade-in 0.5s ease both;
+}
+
+/* ── Premium card interactions ──────────────────────────────────────────── */
+/* Subtle lift + shadow deepening on hover — no scale, no bounce */
+.card-lift {
+  transition:
+    transform      0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow     0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color   0.35s ease;
+  will-change: transform, box-shadow;
+}
+
+.card-lift:hover {
+  transform:  translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.09), 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.dark .card-lift:hover {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Micro-lift for smaller interactive elements */
+.micro-lift {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.micro-lift:hover  { transform: translateY(-2px); }
+.micro-lift:active { transform: translateY(0px);  }
+
+/* ── Glass card enhancement ─────────────────────────────────────────────── */
+/* Adds a very subtle inner highlight on hover */
+.glass-card {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition:
+    box-shadow   0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease,
+    transform    0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.dark .glass-card {
+  background: rgba(15, 12, 30, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dark .glass-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* ── Button interaction polish ──────────────────────────────────────────── */
+/* Smooth press feedback — replaces abrupt scale */
+button, [role="button"] {
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Focus ring polish ──────────────────────────────────────────────────── */
+/* Softer, more premium focus ring */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+  border-radius: 6px;
+  transition: outline-offset 0.15s ease;
+}
+
+/* ── Typography rhythm ──────────────────────────────────────────────────── */
+/* Improved line heights and letter spacing for emotional readability */
+h1, h2, h3 {
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+h4, h5, h6 {
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+p {
+  line-height: 1.7;
+}
+
+/* Small text — slightly more open tracking for legibility */
+.text-xs, .text-sm {
+  letter-spacing: 0.005em;
+}
+
+/* ── Scrollbar polish ───────────────────────────────────────────────────── */
+/* Thin, subtle scrollbar that doesn't distract */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 99px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.45);
+}
+
+/* ── Selection polish ───────────────────────────────────────────────────── */
+::selection {
+  background: hsl(var(--primary) / 0.18);
+  color: hsl(var(--foreground));
+}
+
+/* ── Input / textarea polish ────────────────────────────────────────────── */
+textarea, input[type="text"], input[type="email"], input[type="password"] {
+  transition:
+    border-color 0.25s ease,
+    box-shadow   0.25s ease,
+    background   0.25s ease;
+}
+
+/* ── Link polish ────────────────────────────────────────────────────────── */
+a {
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+/* ── Image rendering ────────────────────────────────────────────────────── */
+img {
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* ── Ambient glow utility ───────────────────────────────────────────────── */
+/* Adds a very subtle pulsing glow — used on key CTAs and active states */
+.ambient-glow {
+  animation: soft-glow-pulse 4s ease-in-out infinite;
+}
+
+/* ── Gradient text animation ────────────────────────────────────────────── */
+/* Animated gradient for hero headlines — very subtle shift */
+.gradient-text-animate {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* ── Stagger container ──────────────────────────────────────────────────── */
+/* Children animate in sequence when parent enters viewport */
+.stagger-children > * {
+  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.19s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.26s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.33s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.40s; }
+
+/* ── Smooth image loading ───────────────────────────────────────────────── */
+img {
+  transition: opacity 0.4s ease;
+}
+
+img[loading] {
+  opacity: 0;
+}
+
+img.loaded {
+  opacity: 1;
+}
+
+/* ── Reduced motion respect ─────────────────────────────────────────────── */
+/* Honour user's system preference — accessibility first */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:   0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:  0.01ms !important;
+    scroll-behavior:      auto   !important;
+  }
+
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
   }
 }

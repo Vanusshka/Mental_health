@@ -110,8 +110,9 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-6">
       <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ opacity: 0, y: 30, scale: 0.96, filter: "blur(8px)" }}
+        animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-sm"
       >
         <div className="text-center mb-8">
@@ -128,7 +129,7 @@ function LoginForm({ onLogin }: { onLogin: () => void }) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="doctor@mindease.ai"
+              placeholder="doctor@manas.ai"
               className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all"
               data-testid="input-doctor-email"
             />
@@ -236,10 +237,10 @@ export default function Doctor() {
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedPatient.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.35 }}
+              initial={{ opacity: 0, x: 20, filter: "blur(5px)" }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, x: -20, filter: "blur(3px)" }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               className="lg:col-span-2 space-y-5"
             >
               {/* Patient header */}
@@ -307,9 +308,9 @@ export default function Doctor() {
                   {selectedPatient.pastSessions.map((session, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.08 }}
+                      initial={{ opacity: 0, y: 10, filter: "blur(3px)" }}
+                      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                      transition={{ delay: i * 0.09, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                       className="p-4 rounded-xl bg-card border border-border"
                       data-testid={`session-summary-${i}`}
                     >

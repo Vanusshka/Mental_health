@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback } from "react";
+import type { EmotionResponse } from "@/services/emotionApi";
 
 export type MoodType = "happy" | "neutral" | "sad" | null;
 
@@ -61,25 +62,35 @@ interface MoodContextType {
   mood: MoodType;
   setMood: (mood: MoodType) => void;
   theme: MoodTheme | null;
+  /** Raw emotion analysis result from the backend, if available */
+  emotionData: EmotionResponse | null;
+  setEmotionData: (data: EmotionResponse | null) => void;
 }
 
 const MoodContext = createContext<MoodContextType>({
   mood: null,
   setMood: () => {},
   theme: null,
+  emotionData: null,
+  setEmotionData: () => {},
 });
 
 export function MoodProvider({ children }: { children: React.ReactNode }) {
   const [mood, setMoodState] = useState<MoodType>(null);
+  const [emotionData, setEmotionDataState] = useState<EmotionResponse | null>(null);
 
   const setMood = useCallback((m: MoodType) => {
     setMoodState(m);
   }, []);
 
+  const setEmotionData = useCallback((data: EmotionResponse | null) => {
+    setEmotionDataState(data);
+  }, []);
+
   const theme = mood ? moodThemes[mood] : null;
 
   return (
-    <MoodContext.Provider value={{ mood, setMood, theme }}>
+    <MoodContext.Provider value={{ mood, setMood, theme, emotionData, setEmotionData }}>
       {children}
     </MoodContext.Provider>
   );
