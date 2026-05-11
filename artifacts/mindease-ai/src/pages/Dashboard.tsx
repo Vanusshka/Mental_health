@@ -103,7 +103,7 @@ function computeWellnessScore(mood: string | null): number {
 
 // ── Personalised wellness insights ────────────────────────────────────────
 interface WellnessInsight {
-  icon: React.ElementType;
+  emoji: string;
   title: string;
   body: string;
   tag: string;
@@ -115,97 +115,24 @@ function buildInsights(mood: string | null): WellnessInsight[] {
   const isHappy = mood === "happy";
 
   if (isSad) return [
-    {
-      icon: Wind,
-      title: "Box Breathing Practice",
-      body: "Inhale 4 counts, hold 4, exhale 4, hold 4. Repeat 4 cycles. This activates your parasympathetic nervous system and reduces emotional intensity.",
-      tag: "Immediate Relief",
-      tagColor: "text-indigo-600 bg-indigo-50",
-    },
-    {
-      icon: Moon,
-      title: "Rest as Recovery",
-      body: "Emotional exhaustion is real. Prioritise 7–8 hours of sleep tonight. Even a 20-minute rest without screens can meaningfully restore emotional capacity.",
-      tag: "Sleep & Recovery",
-      tagColor: "text-blue-600 bg-blue-50",
-    },
-    {
-      icon: BookOpen,
-      title: "Expressive Journaling",
-      body: "Write 3 sentences about what you're feeling without judgment. Research shows expressive writing reduces emotional load and improves clarity within days.",
-      tag: "Emotional Processing",
-      tagColor: "text-violet-600 bg-violet-50",
-    },
-    {
-      icon: Heart,
-      title: "One Small Connection",
-      body: "Isolation amplifies difficult emotions. A brief message to someone you trust — even just checking in — can meaningfully shift your emotional state.",
-      tag: "Social Wellness",
-      tagColor: "text-rose-600 bg-rose-50",
-    },
+    { emoji: "🌬️", title: "Box Breathing Practice", body: "Inhale 4 counts, hold 4, exhale 4, hold 4. Repeat 4 cycles. This activates your parasympathetic nervous system and reduces emotional intensity.", tag: "Immediate Relief", tagColor: "text-indigo-600 bg-indigo-50" },
+    { emoji: "🌙", title: "Rest as Recovery", body: "Emotional exhaustion is real. Prioritise 7–8 hours of sleep tonight. Even a 20-minute rest without screens can meaningfully restore emotional capacity.", tag: "Sleep & Recovery", tagColor: "text-blue-600 bg-blue-50" },
+    { emoji: "📖", title: "Expressive Journaling", body: "Write 3 sentences about what you're feeling without judgment. Research shows expressive writing reduces emotional load and improves clarity within days.", tag: "Emotional Processing", tagColor: "text-violet-600 bg-violet-50" },
+    { emoji: "💬", title: "One Small Connection", body: "Isolation amplifies difficult emotions. A brief message to someone you trust — even just checking in — can meaningfully shift your emotional state.", tag: "Social Wellness", tagColor: "text-rose-600 bg-rose-50" },
   ];
 
   if (isHappy) return [
-    {
-      icon: Zap,
-      title: "Channel Your Energy",
-      body: "Positive emotional states are ideal for tackling meaningful goals. Use this window to make progress on something that matters to you.",
-      tag: "Momentum",
-      tagColor: "text-orange-600 bg-orange-50",
-    },
-    {
-      icon: BookOpen,
-      title: "Gratitude Anchoring",
-      body: "Write down 3 specific things contributing to your positive state today. This practice builds emotional memory and helps sustain wellbeing over time.",
-      tag: "Positive Psychology",
-      tagColor: "text-amber-600 bg-amber-50",
-    },
-    {
-      icon: Heart,
-      title: "Share Your Positivity",
-      body: "Positive emotions are contagious in the best way. Reaching out to someone today can strengthen your relationships and amplify your own wellbeing.",
-      tag: "Social Wellness",
-      tagColor: "text-rose-600 bg-rose-50",
-    },
-    {
-      icon: Shield,
-      title: "Build Resilience Reserves",
-      body: "Good emotional states are the best time to build coping strategies. Establish a small daily wellness habit now — it will serve you during harder days.",
-      tag: "Resilience",
-      tagColor: "text-emerald-600 bg-emerald-50",
-    },
+    { emoji: "⚡", title: "Channel Your Energy", body: "Positive emotional states are ideal for tackling meaningful goals. Use this window to make progress on something that matters to you.", tag: "Momentum", tagColor: "text-orange-600 bg-orange-50" },
+    { emoji: "🙏", title: "Gratitude Anchoring", body: "Write down 3 specific things contributing to your positive state today. This practice builds emotional memory and helps sustain wellbeing over time.", tag: "Positive Psychology", tagColor: "text-amber-600 bg-amber-50" },
+    { emoji: "❤️", title: "Share Your Positivity", body: "Positive emotions are contagious in the best way. Reaching out to someone today can strengthen your relationships and amplify your own wellbeing.", tag: "Social Wellness", tagColor: "text-rose-600 bg-rose-50" },
+    { emoji: "🛡️", title: "Build Resilience Reserves", body: "Good emotional states are the best time to build coping strategies. Establish a small daily wellness habit now — it will serve you during harder days.", tag: "Resilience", tagColor: "text-emerald-600 bg-emerald-50" },
   ];
 
-  // Neutral / default
   return [
-    {
-      icon: Activity,
-      title: "Mindful Check-In",
-      body: "A balanced state is a great foundation. Take 5 minutes today to sit quietly and notice your thoughts without reacting. This builds long-term emotional awareness.",
-      tag: "Mindfulness",
-      tagColor: "text-sky-600 bg-sky-50",
-    },
-    {
-      icon: Moon,
-      title: "Sleep Consistency",
-      body: "Consistent sleep and wake times — even on weekends — are the single most impactful habit for sustained emotional wellbeing.",
-      tag: "Sleep Hygiene",
-      tagColor: "text-blue-600 bg-blue-50",
-    },
-    {
-      icon: Wind,
-      title: "Stress Prevention",
-      body: "Before stress accumulates, try a 10-minute walk or light stretching. Movement is one of the most evidence-backed emotional regulation tools available.",
-      tag: "Prevention",
-      tagColor: "text-teal-600 bg-teal-50",
-    },
-    {
-      icon: BookOpen,
-      title: "Reflective Journaling",
-      body: "Even 5 minutes of free-writing each morning helps process background emotional noise and improves focus and clarity throughout the day.",
-      tag: "Emotional Clarity",
-      tagColor: "text-violet-600 bg-violet-50",
-    },
+    { emoji: "🧘", title: "Mindful Check-In", body: "A balanced state is a great foundation. Take 5 minutes today to sit quietly and notice your thoughts without reacting. This builds long-term emotional awareness.", tag: "Mindfulness", tagColor: "text-sky-600 bg-sky-50" },
+    { emoji: "🌙", title: "Sleep Consistency", body: "Consistent sleep and wake times — even on weekends — are the single most impactful habit for sustained emotional wellbeing.", tag: "Sleep Hygiene", tagColor: "text-blue-600 bg-blue-50" },
+    { emoji: "🚶", title: "Stress Prevention", body: "Before stress accumulates, try a 10-minute walk or light stretching. Movement is one of the most evidence-backed emotional regulation tools available.", tag: "Prevention", tagColor: "text-teal-600 bg-teal-50" },
+    { emoji: "📖", title: "Reflective Journaling", body: "Even 5 minutes of free-writing each morning helps process background emotional noise and improves focus and clarity throughout the day.", tag: "Emotional Clarity", tagColor: "text-violet-600 bg-violet-50" },
   ];
 }
 
@@ -758,7 +685,7 @@ export default function Dashboard() {
                   className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
                   style={{ background: `${accentColor}12` }}
                 >
-                  <insight.icon size={17} style={{ color: accentColor }} />
+                  <span style={{ fontSize: "1.1rem" }}>{insight.emoji}</span>
                 </div>
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2 inline-block ${insight.tagColor}`}>
                   {insight.tag}
@@ -859,7 +786,7 @@ export default function Dashboard() {
           }}
         >
           <div className="flex items-start gap-3">
-            <Shield size={16} className="text-muted-foreground/60 flex-shrink-0 mt-0.5" />
+            <span className="text-muted-foreground/60 flex-shrink-0 mt-0.5">🛡️</span>
             <p className="text-xs text-muted-foreground/70 leading-relaxed">
               <strong className="text-muted-foreground/90">About this dashboard:</strong> Wellness
               indicators and trend data are derived from your emotional assessment responses and
