@@ -8,7 +8,7 @@
  */
 
 import { useRef, useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
@@ -17,15 +17,17 @@ import {
 import {
   Brain, Sparkles, TrendingUp, RefreshCw, Heart,
   Moon, Wind, BookOpen, Zap, Activity, Shield,
-  ArrowRight, Users, Clock,
+  ArrowRight, Users, Clock, Home, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageTransition from "@/components/PageTransition";
 import { useMood } from "@/contexts/MoodContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getRecentAssessments, type AssessmentRecord } from "@/services/firestoreService";
-import { computeAssessmentLevel, getRecommendations } from "@/services/doctorRecommendationService";
+import { getRecentCheckins } from "@/services/supabaseService";
+import type { EmotionalCheckin } from "@/lib/database.types";
+import { getRecommendations } from "@/services/doctorRecommendationService";
 import DoctorRecommendationCard from "@/components/DoctorRecommendationCard";
+import { downloadUserReport } from "@/utils/downloadReport";
 
 // ── Semi-static wellness trend data ───────────────────────────────────────
 // Represents a believable 7-day emotional wellness arc.
@@ -369,6 +371,7 @@ function IndicatorCard({ indicator, delay }: { indicator: WellnessIndicator; del
 export default function Dashboard() {
   const { mood, theme } = useMood();
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const accentColor  = theme?.accent ?? "hsl(var(--primary))";
   const indicators   = buildIndicators(mood);
   const insights     = buildInsights(mood);
@@ -376,23 +379,16 @@ export default function Dashboard() {
   const stateLabel   = getEmotionalStateLabel(mood);
   const hasAssessment = mood !== null;
 
-  // Firestore history
-  const [history, setHistory]         = useState<AssessmentRecord[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  // Supabase history
+  const [history, setHistory] = useState<EmotionalCheckin[]>([]);
 
   useEffect(() => {
     if (!user) return;
-    setHistoryLoading(true);
-    getRecentAssessments(user.uid, 7)
-      .then(setHistory)
-      .catch(() => {}) // non-blocking
-      .finally(() => setHistoryLoading(false));
+    getRecentCheckins(user.id, 7).then(setHistory).catch(() => {});
   }, [user]);
 
-  // Use latest Firestore record to override mood-based indicators if available
   const latestRecord = history[0] ?? null;
 
-  // Recommendation snapshot (only for distress patterns)
   const dummyEmotions = mood === "sad"
     ? [{ label: "sadness", score: 0.82 }, { label: "disappointment", score: 0.18 }]
     : mood === "neutral"
@@ -948,28 +944,41 @@ export default function Dashboard() {
           transition={{ delay: 0.65 }}
           className="flex flex-wrap gap-3"
         >
+          <Button variant="outline" className="rounded-full gap-2" onClick={() => navigate("/")}>
+            <Home size={15} /> Back to Home
+          </Button>
           <Link href="/checkin">
             <Button
               className="rounded-full gap-2 text-white border-0 hover:opacity-90 transition-opacity"
-              style={{
-                background: `linear-gradient(135deg, ${accentColor}, ${theme?.particle1 ?? accentColor})`,
-                boxShadow: theme ? `0 6px 20px ${theme.glow}` : undefined,
-              }}
+              style={{ background: `linear-gradient(135deg, ${accentColor}, ${theme?.particle1 ?? accentColor})`, boxShadow: theme ? `0 6px 20px ${theme.glow}` : undefined }}
             >
               <Brain size={15} />
               {hasAssessment ? "Reassess Emotional State" : "Begin Assessment"}
             </Button>
           </Link>
-          <Link href="/session-summary">
-            <Button variant="outline" className="rounded-full gap-2">
-              <BookOpen size={15} />
-              View Session Summary
+          {hasAssessment && (
+            <Button variant="outline" className="rounded-full gap-2"
+              onClick={() => downloadUserReport({
+                name: user?.display_name ?? "User",
+                date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
+                mood: mood ?? "neutral",
+                wellnessScore,
+                stressScore: indicators[1]?.value ?? 50,
+                emotionalBalance: indicators[0]?.value ?? 60,
+                burnoutRisk: indicators[2]?.value ?? 40,
+                sleepWellness: indicators[3]?.value ?? 60,
+                resilience: indicators[4]?.value ?? 60,
+                socialConnectivity: indicators[5]?.value ?? 60,
+                dominantEmotion: latestRecord?.dominant_emotion ?? mood ?? "neutral",
+                reflection: latestRecord?.reflection ?? undefined,
+                insights: insights.map(i => `${i.title}: ${i.body}`),
+              })}>
+              <Download size={15} /> Download My Report
             </Button>
-          </Link>
+          )}
           <Link href="/experts">
             <Button variant="ghost" className="rounded-full gap-2 text-muted-foreground">
-              <Users size={15} />
-              Browse Wellness Experts
+              <Users size={15} /> Browse Wellness Experts
             </Button>
           </Link>
         </motion.div>

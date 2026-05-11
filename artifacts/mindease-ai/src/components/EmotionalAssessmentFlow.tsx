@@ -22,6 +22,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearch } from "wouter";
 import MoodSelectionCard from "@/components/MoodSelectionCard";
 import ContextInputCard from "@/components/ContextInputCard";
 import ContextResponseCard from "@/components/ContextResponseCard";
@@ -31,7 +32,7 @@ import AssessmentResultCard from "@/components/AssessmentResultCard";
 import { useMood } from "@/contexts/MoodContext";
 import type { MoodType } from "@/contexts/MoodContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { saveCheckin } from "@/services/supabaseService";
+import { saveCheckin, getNextSessionNumber } from "@/services/supabaseService";
 import { computeAssessmentLevel } from "@/services/doctorRecommendationService";
 import type { EmotionResponse } from "@/services/emotionApi";
 
@@ -78,6 +79,12 @@ export default function EmotionalAssessmentFlow() {
   const { mood } = useMood();
   const { user } = useAuth();
 
+  // Read patient_id and doctor_id from URL query params (set by Doctor portal)
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const patientId = params.get("patient_id") ?? undefined;
+  const doctorId  = params.get("doctor_id") ?? undefined;
+
   // ── Stage routing ──────────────────────────────────────────────────────
   // IMPORTANT: routing uses `moodId` passed directly from MoodSelectionCard,
   // NOT from useMood() — React state updates are async and mood would be
@@ -118,14 +125,18 @@ export default function EmotionalAssessmentFlow() {
     // Save to Supabase (non-blocking)
     if (emotionResult && mood) {
       try {
+        const sessionNum = patientId ? await getNextSessionNumber(patientId) : undefined;
         await saveCheckin({
-          user_id:      user?.id,
-          display_name: user?.display_name ?? "Anonymous",
-          email:        user?.email ?? "",
-          mood:         mood as "happy" | "neutral" | "sad",
-          emotions:     emotionResult.emotions,
+          user_id:        user?.id,
+          display_name:   user?.display_name ?? "Anonymous",
+          email:          user?.email ?? "",
+          mood:           mood as "happy" | "neutral" | "sad",
+          emotions:       emotionResult.emotions,
           reflection,
-          answers:      completedAnswers,
+          answers:        completedAnswers,
+          patient_id:     patientId,
+          doctor_id:      doctorId,
+          session_number: sessionNum,
         });
       } catch (err) {
         console.warn("[MindEase] Supabase save failed:", err);

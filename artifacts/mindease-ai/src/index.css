@@ -607,7 +607,20 @@ img.loaded {
   opacity: 1;
 }
 
-/* ── Reduced motion respect ─────────────────────────────────────────────── */
+/* ── Hide Vite/Replit injected dev buttons ──────────────────────────────── */
+/* Removes the "Open Editor" / "Show Editor" overlay button from backgrounds */
+[data-replit-badge],
+#replit-badge,
+.replit-ui-theme-root button[aria-label*="editor" i],
+vite-error-overlay,
+div[class*="vite-error"],
+div[id*="vite-error"],
+button[class*="open-editor"],
+a[class*="open-editor"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 /* Honour user's system preference — accessibility first */
 @media (prefers-reduced-motion: reduce) {
   *,

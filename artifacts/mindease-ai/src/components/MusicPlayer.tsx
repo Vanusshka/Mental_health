@@ -11,7 +11,11 @@ import { useMood, type MoodType } from "@/contexts/MoodContext";
 import { useLocation } from "wouter";
 
 const DEFAULT_VOL = 0.28;
-const HIDDEN_PATHS = ["/dashboard", "/session-summary", "/doctor", "/org", "/experts", "/login", "/role-select"];
+
+// Music ONLY plays on the checkin/assessment flow
+const MUSIC_PAGES = ["/checkin", "/mood"];
+// Music stops completely on these pages
+const STOP_PAGES  = ["/", "/login", "/dashboard", "/session-summary", "/doctor", "/org", "/experts", "/role-select"];
 
 class AmbientEngine {
   private ctx: AudioContext | null = null;
@@ -136,25 +140,29 @@ export default function MusicPlayer() {
   const prevMood = useRef<MoodType>(null);
   const pendingMood = useRef<NonNullable<MoodType> | null>(null);
 
-  const isHidden = HIDDEN_PATHS.some(p => location === p) || location.startsWith("/workshop");
+  const isHidden = !MUSIC_PAGES.some(p => location === p || location.startsWith(p));
+  const shouldStop = STOP_PAGES.some(p => location === p) || location.startsWith("/workshop");
 
-  // When mood changes, try to start audio
+  // When mood changes, try to start audio — only on checkin pages
   useEffect(() => {
     if (!mood || isHidden) return;
     if (mood !== prevMood.current) {
       prevMood.current = mood;
       pendingMood.current = mood;
-      // Try to start — if AudioContext is suspended, show tap prompt
       engine.start(mood, muted ? 0 : volume)
         .then(() => { setPlaying(true); setNeedsGesture(false); })
         .catch(() => { setNeedsGesture(true); });
     }
   }, [mood, isHidden]);
 
-  // Stop on hidden pages
+  // Stop and reset when navigating away from checkin or to landing/login
   useEffect(() => {
-    if (isHidden && playing) { engine.fadeOut(); setPlaying(false); }
-  }, [isHidden]);
+    if (shouldStop && playing) {
+      engine.fadeOut(1.2);
+      setPlaying(false);
+      prevMood.current = null; // reset so music restarts fresh next time
+    }
+  }, [shouldStop]);
 
   // Handle tap-to-start (needed when browser blocks autoplay)
   async function handleGestureTap() {

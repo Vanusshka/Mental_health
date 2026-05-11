@@ -1,10 +1,32 @@
 -- ============================================================
--- MindEase AI — Supabase Schema
--- Run this in Supabase SQL Editor (once)
+-- MindEase AI — Supabase Schema v2
+-- Run this in Supabase SQL Editor
 -- ============================================================
 
--- Enable UUID extension
 create extension if not exists "pgcrypto";
+
+-- ── patients ──────────────────────────────────────────────────
+create table if not exists patients (
+  id          uuid primary key default gen_random_uuid(),
+  doctor_id   text not null,
+  name        text not null,
+  age         integer,
+  condition   text,
+  notes       text,
+  created_at  timestamptz not null default now()
+);
+
+-- ── workshops ─────────────────────────────────────────────────
+create table if not exists workshops (
+  id                uuid primary key default gen_random_uuid(),
+  workshop_name     text not null,
+  description       text,
+  organization_id   text,
+  organization_name text,
+  date              date,
+  created_at        timestamptz not null default now(),
+  checkin_count     integer not null default 0
+);
 
 -- ── emotional_checkins ────────────────────────────────────────
 create table if not exists emotional_checkins (
@@ -27,19 +49,10 @@ create table if not exists emotional_checkins (
   reflection           text,
   answers              jsonb,
   workshop_id          uuid references workshops(id) on delete set null,
+  patient_id           uuid references patients(id) on delete set null,
+  doctor_id            text,
+  session_number       integer,
   timestamp            timestamptz not null default now()
-);
-
--- ── workshops ─────────────────────────────────────────────────
-create table if not exists workshops (
-  id                uuid primary key default gen_random_uuid(),
-  workshop_name     text not null,
-  description       text,
-  organization_id   text,
-  organization_name text,
-  date              date,
-  created_at        timestamptz not null default now(),
-  checkin_count     integer not null default 0
 );
 
 -- ── workshop_participants ─────────────────────────────────────
@@ -52,35 +65,36 @@ create table if not exists workshop_participants (
 );
 
 -- ── Indexes ───────────────────────────────────────────────────
-create index if not exists idx_checkins_user_id   on emotional_checkins(user_id);
-create index if not exists idx_checkins_timestamp on emotional_checkins(timestamp desc);
-create index if not exists idx_checkins_mood      on emotional_checkins(mood);
+create index if not exists idx_checkins_user_id    on emotional_checkins(user_id);
+create index if not exists idx_checkins_patient_id on emotional_checkins(patient_id);
+create index if not exists idx_checkins_doctor_id  on emotional_checkins(doctor_id);
+create index if not exists idx_checkins_timestamp  on emotional_checkins(timestamp desc);
 create index if not exists idx_participants_workshop on workshop_participants(workshop_id);
-create index if not exists idx_workshops_org      on workshops(organization_id);
+create index if not exists idx_patients_doctor     on patients(doctor_id);
 
--- ── RLS (Row Level Security) — open for demo ──────────────────
+-- ── RLS ───────────────────────────────────────────────────────
 alter table emotional_checkins    enable row level security;
 alter table workshops             enable row level security;
 alter table workshop_participants enable row level security;
+alter table patients              enable row level security;
 
--- Allow all operations for anon key (demo mode — tighten in production)
-create policy "allow_all_checkins"    on emotional_checkins    for all using (true) with check (true);
-create policy "allow_all_workshops"   on workshops             for all using (true) with check (true);
+create policy "allow_all_checkins"     on emotional_checkins    for all using (true) with check (true);
+create policy "allow_all_workshops"    on workshops             for all using (true) with check (true);
 create policy "allow_all_participants" on workshop_participants for all using (true) with check (true);
+create policy "allow_all_patients"     on patients              for all using (true) with check (true);
 
--- ── Auto-update checkin_count on participant insert ───────────
+-- ── Auto-update checkin_count ─────────────────────────────────
 create or replace function update_workshop_checkin_count()
 returns trigger language plpgsql as $$
 begin
-  update workshops
-  set checkin_count = (
+  update workshops set checkin_count = (
     select count(*) from workshop_participants where workshop_id = NEW.workshop_id
-  )
-  where id = NEW.workshop_id;
+  ) where id = NEW.workshop_id;
   return NEW;
 end;
 $$;
 
+drop trigger if exists trg_update_checkin_count on workshop_participants;
 create trigger trg_update_checkin_count
 after insert on workshop_participants
 for each row execute function update_workshop_checkin_count();

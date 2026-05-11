@@ -2,10 +2,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
-import { Building2, Plus, QrCode, BarChart3, Users, TrendingUp, AlertTriangle, Brain, Shield, X, RefreshCw } from "lucide-react";
+import { Building2, Plus, QrCode, BarChart3, Users, TrendingUp, AlertTriangle, Brain, Shield, X, RefreshCw, Home, Download } from "lucide-react";
 import { createWorkshop, getWorkshops, getWorkshopAnalytics, getOrgAnalytics, addWorkshopParticipant, type WorkshopAnalytics } from "@/services/supabaseService";
 import type { Workshop } from "@/lib/database.types";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "wouter";
+import { downloadOrgReport } from "@/utils/downloadReport";
 
 const COLORS = { happy: "#10b981", neutral: "#06b6d4", sad: "#f87171" };
 
@@ -128,6 +130,7 @@ function QRModal({ workshop, onClose }) {
 
 export default function OrgPortal() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -177,6 +180,9 @@ export default function OrgPortal() {
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 1rem", borderRadius: 20, background: "rgba(0,0,0,0.05)", border: "none", fontWeight: 600, cursor: "pointer", fontSize: "0.82rem", color: "#374151" }}>
+              <Home size={14} /> Back to Home
+            </button>
             <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem", fontWeight: 600, padding: "0.4rem 0.9rem", borderRadius: 20, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>
               <Shield size={11} /> Anonymized Data Only
             </span>
@@ -271,7 +277,22 @@ export default function OrgPortal() {
                   : "No check-in data yet. Share workshop QR codes with participants to start collecting real emotional wellness data."}
               </p>
               <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
-                <button style={{ padding: "0.5rem 1rem", borderRadius: 20, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" }}>📄 Export PDF</button>
+                <button onClick={() => downloadOrgReport({
+                  orgName: user?.display_name ?? "Organization",
+                  date: new Date().toLocaleDateString("en-IN", {day:"numeric",month:"long",year:"numeric"}),
+                  totalCheckins: analytics?.total ?? 0,
+                  happyPct: analytics?.happy_pct ?? 0,
+                  neutralPct: analytics?.neutral_pct ?? 0,
+                  stressedPct: analytics?.sad_pct ?? 0,
+                  avgWellness: analytics?.avg_wellness ?? 0,
+                  avgStress: analytics?.avg_stress ?? 0,
+                  workshopsCount: workshops.length,
+                  insights: analytics && analytics.total > 0
+                    ? `${analytics.total} emotional check-ins recorded. Community wellness score averages ${analytics.avg_wellness}/100. ${analytics.happy_pct}% positive, ${analytics.neutral_pct}% neutral, ${analytics.sad_pct}% high-stress. Average stress level: ${analytics.avg_stress}/10.`
+                    : "No check-in data yet.",
+                })} style={{ padding: "0.5rem 1rem", borderRadius: 20, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <Download size={13} /> Download PDF Report
+                </button>
                 <button onClick={loadData} style={{ padding: "0.5rem 1rem", borderRadius: 20, background: "rgba(6,182,212,0.1)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.3)", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" }}>🔄 Refresh Data</button>
               </div>
             </div>

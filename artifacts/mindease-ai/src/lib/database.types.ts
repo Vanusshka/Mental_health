@@ -1,11 +1,5 @@
 /**
  * Supabase Database Types
- * Auto-generated shape matching the schema below.
- *
- * Tables:
- *   emotional_checkins
- *   workshops
- *   workshop_participants
  */
 
 export interface Database {
@@ -32,6 +26,9 @@ export interface Database {
           reflection: string | null;
           answers: { question: string; answer: string }[] | null;
           workshop_id: string | null;
+          patient_id: string | null;
+          doctor_id: string | null;
+          session_number: number | null;
           timestamp: string;
         };
         Insert: Omit<Database["public"]["Tables"]["emotional_checkins"]["Row"], "id" | "timestamp"> & { id?: string; timestamp?: string };
@@ -62,11 +59,24 @@ export interface Database {
         Insert: Omit<Database["public"]["Tables"]["workshop_participants"]["Row"], "id" | "timestamp"> & { id?: string; timestamp?: string };
         Update: Partial<Database["public"]["Tables"]["workshop_participants"]["Row"]>;
       };
+      patients: {
+        Row: {
+          id: string;
+          doctor_id: string;
+          name: string;
+          age: number | null;
+          condition: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["patients"]["Row"], "id" | "created_at"> & { id?: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["patients"]["Row"]>;
+      };
     };
   };
 }
 
-// Convenience row types
-export type EmotionalCheckin   = Database["public"]["Tables"]["emotional_checkins"]["Row"];
-export type Workshop           = Database["public"]["Tables"]["workshops"]["Row"];
+export type EmotionalCheckin    = Database["public"]["Tables"]["emotional_checkins"]["Row"];
+export type Workshop            = Database["public"]["Tables"]["workshops"]["Row"];
 export type WorkshopParticipant = Database["public"]["Tables"]["workshop_participants"]["Row"];
+export type Patient             = Database["public"]["Tables"]["patients"]["Row"];

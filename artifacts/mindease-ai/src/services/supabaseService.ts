@@ -4,7 +4,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import type { EmotionalCheckin, Workshop, WorkshopParticipant } from "@/lib/database.types";
+import type { EmotionalCheckin, Workshop, WorkshopParticipant, Patient } from "@/lib/database.types";
 import type { EmotionScore } from "@/services/emotionApi";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -32,6 +32,9 @@ export interface SaveCheckinInput {
   reflection?: string;
   answers?: { question: string; answer: string }[];
   workshop_id?: string;
+  patient_id?: string;
+  doctor_id?: string;
+  session_number?: number;
 }
 
 export async function saveCheckin(input: SaveCheckinInput): Promise<string | null> {
@@ -53,6 +56,9 @@ export async function saveCheckin(input: SaveCheckinInput): Promise<string | nul
       reflection:          input.reflection ?? null,
       answers:             input.answers ?? null,
       workshop_id:         input.workshop_id ?? null,
+      patient_id:          input.patient_id ?? null,
+      doctor_id:           input.doctor_id ?? null,
+      session_number:      input.session_number ?? null,
       ...indicators,
     })
     .select("id")
@@ -269,6 +275,61 @@ export async function getWorkshopAnalytics(workshopId: string): Promise<Workshop
     avg_stress,
     stressed_percent: Math.round(sad / total * 100),
   };
+}
+
+// ── Patient Management (Doctor Portal) ───────────────────────────────────
+
+export interface CreatePatientInput {
+  doctor_id: string;
+  name: string;
+  age?: number;
+  condition?: string;
+  notes?: string;
+}
+
+export async function createPatient(input: CreatePatientInput): Promise<Patient | null> {
+  if (!isSupabaseConfigured) {
+    return { id: crypto.randomUUID(), doctor_id: input.doctor_id, name: input.name, age: input.age ?? null, condition: input.condition ?? null, notes: input.notes ?? null, created_at: new Date().toISOString() };
+  }
+  const { data, error } = await supabase.from("patients").insert({ doctor_id: input.doctor_id, name: input.name, age: input.age ?? null, condition: input.condition ?? null, notes: input.notes ?? null }).select().single();
+  if (error) { console.error("[Supabase] createPatient:", error.message); return null; }
+  return data;
+}
+
+export async function getPatientsByDoctor(doctorId: string): Promise<Patient[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.from("patients").select("*").eq("doctor_id", doctorId).order("created_at", { ascending: false });
+  if (error) { console.error("[Supabase] getPatients:", error.message); return []; }
+  return data ?? [];
+}
+
+export async function updatePatientNotes(patientId: string, notes: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+  const { error } = await supabase.from("patients").update({ notes }).eq("id", patientId);
+  if (error) { console.error("[Supabase] updateNotes:", error.message); return false; }
+  return true;
+}
+
+export async function getCheckinsByPatient(patientId: string): Promise<EmotionalCheckin[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.from("emotional_checkins").select("*").eq("patient_id", patientId).order("timestamp", { ascending: true });
+  if (error) { console.error("[Supabase] getCheckinsByPatient:", error.message); return []; }
+  return data ?? [];
+}
+
+export async function getNextSessionNumber(patientId: string): Promise<number> {
+  if (!isSupabaseConfigured) return 1;
+  const { count } = await supabase.from("emotional_checkins").select("*", { count: "exact", head: true }).eq("patient_id", patientId);
+  return (count ?? 0) + 1;
+}
+
+// ── Workshops — public list for users ────────────────────────────────────
+
+export async function getAllWorkshops(): Promise<Workshop[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.from("workshops").select("*").order("created_at", { ascending: false });
+  if (error) { console.error("[Supabase] getAllWorkshops:", error.message); return []; }
+  return data ?? [];
 }
 
 // ── Doctor Portal — Patient Summaries ────────────────────────────────────
