@@ -7,23 +7,14 @@
 import { useRef, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, useInView } from "framer-motion";
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid,
-} from "recharts";
-import {
-  Brain, Sparkles, TrendingUp, RefreshCw, Heart,
-  Moon, Wind, BookOpen, Zap, Activity, Shield,
-  ArrowRight, Users, Clock, Home, Download,
-} from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { Brain, Sparkles, TrendingUp, RefreshCw, Activity, Shield, Users, Clock, Home, Download, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageTransition from "@/components/PageTransition";
 import { useMood } from "@/contexts/MoodContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRecentCheckins } from "@/services/supabaseService";
 import type { EmotionalCheckin } from "@/lib/database.types";
-import { getRecommendations } from "@/services/doctorRecommendationService";
-import DoctorRecommendationCard from "@/components/DoctorRecommendationCard";
 import { downloadUserReport } from "@/utils/downloadReport";
 
 // ── Wellness indicator definitions ────────────────────────────────────────
@@ -779,7 +770,7 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* ── Assessment history (Firestore) ───────────────────────── */}
+        {/* ── Assessment history (Supabase) ───────────────────────── */}
         {history.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 24, filter: "blur(4px)" }}
@@ -808,11 +799,10 @@ export default function Dashboard() {
               variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } } }}
             >
               {history.map((record, i) => {
-                const moodEmoji = record.selectedMood === "happy" ? "😊" : record.selectedMood === "sad" ? "😔" : "😐";
-                const levelColor = record.assessmentLevel === "elevated" ? "#f87171" : record.assessmentLevel === "moderate" ? "#fb923c" : "#34d399";
-                const ts = record.timestamp as { toDate?: () => Date } | null;
-                const dateStr = ts?.toDate
-                  ? ts.toDate().toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                const moodEmoji = record.mood === "happy" ? "😊" : record.mood === "sad" ? "😔" : "😐";
+                const levelColor = record.assessment_level === "elevated" ? "#f87171" : record.assessment_level === "moderate" ? "#fb923c" : "#34d399";
+                const dateStr = record.timestamp
+                  ? new Date(record.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
                   : "Recent";
                 return (
                   <motion.div
@@ -833,17 +823,17 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold capitalize text-foreground/80">
-                          {record.dominantEmotion}
+                          {record.dominant_emotion}
                         </span>
                         <span
                           className="text-[10px] font-medium px-2 py-0.5 rounded-full"
                           style={{ background: `${levelColor}15`, color: levelColor, border: `1px solid ${levelColor}30` }}
                         >
-                          {record.assessmentLevel}
+                          {record.assessment_level}
                         </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                        Wellness score: {record.wellnessScore}/100 · Balance: {record.emotionalBalance}%
+                        Wellness score: {record.wellness_score}/100 · Balance: {record.emotional_balance}%
                       </p>
                     </div>
                     <span className="text-[11px] text-muted-foreground/60 flex-shrink-0 hidden sm:block">
@@ -852,52 +842,6 @@ export default function Dashboard() {
                   </motion.div>
                 );
               })}
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* ── Professional support snapshot (distress only) ─────────── */}
-        {recommendation.shouldShow && recommendation.professionals.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55 }}
-            className="mb-8"
-          >
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-2">
-                  <Users size={14} />
-                  Professional Support Snapshot
-                </h2>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Based on your emotional patterns, these professionals may offer meaningful support.
-                </p>
-              </div>
-              <Link href="/experts">
-                <Button variant="outline" size="sm" className="rounded-full gap-1.5 text-xs">
-                  View All Experts
-                  <ArrowRight size={12} />
-                </Button>
-              </Link>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recommendation.professionals.map((pro, i) => (
-                <DoctorRecommendationCard key={pro.id} professional={pro} index={i} />
-              ))}
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              className="mt-4 rounded-xl px-4 py-3 text-xs text-muted-foreground/60 leading-relaxed"
-              style={{ background: "rgba(0,0,0,0.025)", border: "1px solid rgba(0,0,0,0.05)" }}
-            >
-              <strong className="text-muted-foreground/80">Note:</strong> These recommendations are
-              based on emotional assessment patterns, not a clinical diagnosis. Always verify
-              professional credentials independently.
             </motion.div>
           </motion.div>
         )}

@@ -14,8 +14,8 @@
  */
 
 import { motion } from "framer-motion";
-import { Link } from "wouter";
-import { ArrowRight, RefreshCw, ShieldCheck, Users, BookOpen } from "lucide-react";
+import { Link, useSearch } from "wouter";
+import { ArrowRight, RefreshCw, ShieldCheck, Users, BookOpen, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMood } from "@/contexts/MoodContext";
 import { formatScore } from "@/utils/emotionTheme";
@@ -143,6 +143,10 @@ const NEXT_STEPS = {
 
 export default function AssessmentResultCard({ emotions, answers, onReset }: AssessmentResultCardProps) {
   const { mood, theme } = useMood();
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const isDoctorSession = !!params.get("doctor_id"); // came from doctor portal
+
   const signals = computeWellnessSignals(emotions);
   const summary = buildAssessmentSummary(signals, mood);
   const styles = LEVEL_STYLES[summary.level];
@@ -325,6 +329,33 @@ export default function AssessmentResultCard({ emotions, answers, onReset }: Ass
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-3">
           Recommended Next Steps
         </p>
+
+        {/* Return to Doctor Portal — shown when diagnosis was via doctor */}
+        {isDoctorSession && (
+          <Link href="/doctor">
+            <motion.div
+              whileHover={{ x: 4 }}
+              className="flex items-center gap-3 rounded-xl px-4 py-3.5 cursor-pointer transition-all duration-200 group mb-1"
+              style={{
+                background: "rgba(14,165,233,0.08)",
+                backdropFilter: "blur(12px)",
+                border: "1.5px solid rgba(14,165,233,0.3)",
+              }}
+            >
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(14,165,233,0.15)" }}>
+                <Stethoscope size={15} style={{ color: "#0ea5e9" }} />
+              </div>
+              <div className="flex-1">
+                <span className="text-sm font-semibold text-foreground/90 group-hover:text-foreground transition-colors block">
+                  Return to Doctor Portal
+                </span>
+                <span className="text-xs text-muted-foreground">View saved patient data & session history</span>
+              </div>
+              <ArrowRight size={14} className="text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
+            </motion.div>
+          </Link>
+        )}
+
         {nextSteps.map((step, i) => (
           <Link key={i} href={step.href}>
             <motion.div

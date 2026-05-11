@@ -34,8 +34,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   function login(email: string, role: UserRole) {
+    // Use email as stable ID so Supabase queries return same user's data on re-login
+    const stableId = btoa(email.toLowerCase().trim()).replace(/[^a-zA-Z0-9]/g, "").slice(0, 36);
     const session: SessionUser = {
-      id:           crypto.randomUUID(),
+      id:           stableId,
       email,
       display_name: email.split("@")[0],
       role,

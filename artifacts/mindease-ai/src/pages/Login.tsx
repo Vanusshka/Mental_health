@@ -19,12 +19,7 @@ const ROLES = [
   { id: "org",    label: "Organization / NGO",   icon: Building2,    color: "#10b981", path: "/org",      desc: "Community wellness & workshop analytics" },
 ];
 
-// Demo credentials (any input works — just needs to be non-empty)
-const DEMO_HINT: Record<string, string> = {
-  user:   "demo@MANAS.ai",
-  doctor: "doctor@MANAS.ai",
-  org:    "org@MANAS.ai",
-};
+// No autofill — user enters their own credentials
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -43,7 +38,8 @@ export default function Login() {
     setRole(id);
     setDropOpen(false);
     setError("");
-    setEmail(DEMO_HINT[id] || "");
+    setEmail("");      // clear — let user type their own credentials
+    setPassword("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
