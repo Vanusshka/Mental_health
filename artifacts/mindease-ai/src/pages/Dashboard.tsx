@@ -395,21 +395,6 @@ export default function Dashboard() {
     }).filter(d => d.hasData);
   })() : [];
 
-  // Adaptive trend data — shift values based on mood
-  const trendData = TREND_DATA.map((d, i) => ({
-    ...d,
-    balance: mood === "sad"
-      ? Math.max(30, d.balance - 18 + i * 2)
-      : mood === "happy"
-      ? Math.min(95, d.balance + 12)
-      : d.balance,
-    stress: mood === "sad"
-      ? Math.min(90, d.stress + 14)
-      : mood === "happy"
-      ? Math.max(20, d.stress - 22)
-      : d.stress,
-  }));
-
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -665,7 +650,7 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
-          {/* Mood consistency panel */}
+          {/* Mood consistency panel — real data */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -677,51 +662,56 @@ export default function Dashboard() {
               border: "1px solid rgba(255,255,255,0.5)",
             }}
           >
-            <h2 className="text-sm font-semibold mb-1">Mood Consistency</h2>
-            <p className="text-xs text-muted-foreground mb-5">This week's emotional pattern</p>
+            <h2 className="text-sm font-semibold mb-1">Session History</h2>
+            <p className="text-xs text-muted-foreground mb-5">Your recent check-ins</p>
+            {trendData.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">
+                Complete more check-ins to see your pattern here.
+              </p>
+            ) : (
             <div className="space-y-3">
               {trendData.map((d, i) => {
-                const isToday = i === trendData.length - 1;
-                const barWidth = `${d.balance}%`;
+                const isLatest = i === trendData.length - 1;
+                const barWidth = `${d.balance ?? 0}%`;
                 return (
                   <motion.div
-                    key={d.day}
+                    key={`${d.day}-${i}`}
                     initial={{ opacity: 0, x: 16 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4 + i * 0.06 }}
                     className="flex items-center gap-3"
                   >
-                    <span className={`text-xs w-7 flex-shrink-0 font-medium ${isToday ? "" : "text-muted-foreground"}`}>
+                    <span className={`text-xs w-7 flex-shrink-0 font-medium ${isLatest ? "" : "text-muted-foreground"}`}>
                       {d.day}
                     </span>
                     <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                       <motion.div
                         className="h-full rounded-full"
-                        style={{ background: isToday ? accentColor : `${accentColor}70` }}
+                        style={{ background: isLatest ? accentColor : `${accentColor}70` }}
                         initial={{ width: 0 }}
                         animate={{ width: barWidth }}
                         transition={{ delay: 0.5 + i * 0.06, duration: 0.7, ease: "easeOut" }}
                       />
                     </div>
                     <span className="text-[11px] text-muted-foreground w-8 text-right tabular-nums">
-                      {d.balance}%
+                      {d.balance ?? 0}%
                     </span>
                   </motion.div>
                 );
               })}
             </div>
+            )}
             <div
               className="mt-5 rounded-xl px-3 py-2.5 text-xs text-muted-foreground leading-relaxed"
               style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.05)" }}
             >
-              {mood === "sad"
-                ? "Your emotional balance has been lower this week. Small daily practices can gradually shift this pattern."
-                : mood === "happy"
-                ? "Your emotional balance has been strong this week. Keep nurturing the habits that support this."
-                : "Your emotional balance has been steady this week — a healthy foundation for continued wellbeing."}
+              {history.length === 0
+                ? "Complete your first check-in to start tracking your emotional pattern."
+                : `${history.length} session${history.length !== 1 ? "s" : ""} recorded. Keep checking in to build your trend.`}
             </div>
           </motion.div>
         </div>
+        )}
 
         {/* ── Personalised wellness insights ───────────────────────── */}
         <div className="mb-8">
