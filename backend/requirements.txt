@@ -2,8 +2,5 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.34.0
 pydantic>=2.11.0
 python-dotenv>=1.1.0
-transformers>=4.51.0
-torch>=2.7.0
 google-genai>=2.0.0
-# sentencepiece is optional - not required for roberta-base-go_emotions
-# Install only if you have C++ build tools: pip install sentencepiece
+supabase>=2.0.0

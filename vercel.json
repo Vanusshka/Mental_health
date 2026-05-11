@@ -1,0 +1,13 @@
+{
+  "buildCommand": "cd artifacts/mindease-ai && pnpm install && npx vite build --config vite.local.config.ts",
+  "outputDirectory": "artifacts/mindease-ai/dist/public",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "@vite_supabase_url",
+    "VITE_SUPABASE_ANON_KEY": "@vite_supabase_anon_key"
+  }
+}
