@@ -1,102 +1,65 @@
 /**
- * AuthContext
- * ─────────────────────────────────────────────────────────────────────────
- * Provides Firebase user, auth loading state, config status, and user role.
- * Role is fetched from Firestore after auth state resolves.
+ * AuthContext — Supabase-ready session context
+ * Reads/writes from localStorage session (no Firebase).
  */
 
-import { createContext, useContext, useEffect, useState } from "react";
-import type { User } from "firebase/auth";
-import { onAuthStateChange, checkRedirectResult, isFirebaseConfigured } from "@/services/authService";
-import { getUserRole, type UserRole } from "@/services/firestoreService";
+import { createContext, useContext, useState, useEffect } from "react";
+import { getSession, setSession, clearSession, type SessionUser, type UserRole } from "@/services/authService";
 
 interface AuthContextType {
-  user: User | null;
+  user: SessionUser | null;
   loading: boolean;
-  /** True if all required Firebase env vars are present */
   isConfigured: boolean;
-  /** "patient" | "doctor" | null (null = not yet chosen or still loading) */
   role: UserRole | null;
-  /** True while the role is being fetched from Firestore */
   roleLoading: boolean;
-  /** Call after saving a new role so the context updates immediately */
+  login: (email: string, role: UserRole) => void;
+  logout: () => void;
   refreshRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  isConfigured: false,
-  role: null,
-  roleLoading: false,
-  refreshRole: async () => {},
+  user: null, loading: false, isConfigured: true,
+  role: null, roleLoading: false,
+  login: () => {}, logout: () => {}, refreshRole: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser]               = useState<User | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [role, setRole]               = useState<UserRole | null>(null);
-  const [roleLoading, setRoleLoading] = useState(false);
-  const configured                    = isFirebaseConfigured();
-
-  async function fetchRole(firebaseUser: User | null) {
-    if (!firebaseUser || !configured) {
-      setRole(null);
-      return;
-    }
-    setRoleLoading(true);
-    try {
-      const r = await getUserRole(firebaseUser.uid);
-      setRole(r);
-    } catch {
-      setRole(null);
-    } finally {
-      setRoleLoading(false);
-    }
-  }
-
-  async function refreshRole() {
-    await fetchRole(user);
-  }
+  const [user, setUser]   = useState<SessionUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!configured) {
-      setLoading(false);
-      return;
-    }
+    const session = getSession();
+    if (session) setUser(session);
+    setLoading(false);
+  }, []);
 
-    // Only subscribe to auth state if Firebase is properly configured
-    let unsubscribe: (() => void) | undefined;
-    try {
-      unsubscribe = onAuthStateChanged_internal(async (firebaseUser) => {
-        setUser(firebaseUser);
-        setLoading(false);
-        await fetchRole(firebaseUser);
-      });
+  function login(email: string, role: UserRole) {
+    const session: SessionUser = {
+      id:           crypto.randomUUID(),
+      email,
+      display_name: email.split("@")[0],
+      role,
+    };
+    setSession(session);
+    setUser(session);
+  }
 
-      checkRedirectResult().then(async (redirectUser) => {
-        if (redirectUser) {
-          setUser(redirectUser);
-          await fetchRole(redirectUser);
-        }
-      });
-    } catch {
-      setLoading(false);
-    }
+  function logout() {
+    clearSession();
+    setUser(null);
+  }
 
-    return () => unsubscribe?.();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configured]);
+  async function refreshRole() {}
 
   return (
-    <AuthContext.Provider value={{ user, loading, isConfigured: configured, role, roleLoading, refreshRole }}>
+    <AuthContext.Provider value={{
+      user, loading, isConfigured: true,
+      role: user?.role ?? null, roleLoading: false,
+      login, logout, refreshRole,
+    }}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-function onAuthStateChanged_internal(cb: (u: User | null) => void) {
-  return onAuthStateChange(cb);
 }
 
 export function useAuth() {

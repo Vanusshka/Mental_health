@@ -31,7 +31,7 @@ import AssessmentResultCard from "@/components/AssessmentResultCard";
 import { useMood } from "@/contexts/MoodContext";
 import type { MoodType } from "@/contexts/MoodContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { saveAssessment } from "@/services/firestoreService";
+import { saveCheckin } from "@/services/supabaseService";
 import { computeAssessmentLevel } from "@/services/doctorRecommendationService";
 import type { EmotionResponse } from "@/services/emotionApi";
 
@@ -115,21 +115,20 @@ export default function EmotionalAssessmentFlow() {
     setAnswers(completedAnswers);
     setStage("result");
 
-    // Save to Firestore (non-blocking)
-    if (user && emotionResult && mood) {
+    // Save to Supabase (non-blocking)
+    if (emotionResult && mood) {
       try {
-        await saveAssessment({
-          uid:             user.uid,
-          displayName:     user.displayName ?? "Anonymous",
-          email:           user.email ?? "",
-          selectedMood:    mood as "happy" | "neutral" | "sad",
-          emotions:        emotionResult.emotions,
-          assessmentLevel: computeAssessmentLevel(emotionResult.emotions),
+        await saveCheckin({
+          user_id:      user?.id,
+          display_name: user?.display_name ?? "Anonymous",
+          email:        user?.email ?? "",
+          mood:         mood as "happy" | "neutral" | "sad",
+          emotions:     emotionResult.emotions,
           reflection,
-          answers:         completedAnswers,
+          answers:      completedAnswers,
         });
       } catch (err) {
-        console.warn("[MANAS] Firestore save failed:", err);
+        console.warn("[MindEase] Supabase save failed:", err);
       }
     }
   }

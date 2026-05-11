@@ -11,6 +11,7 @@ import MusicPlayer from "@/components/MusicPlayer";
 import MouseGlow from "@/components/MouseGlow";
 
 import Login from "@/pages/Login";
+import Landing from "@/pages/Landing";
 import CheckIn from "@/pages/CheckIn";
 import Dashboard from "@/pages/Dashboard";
 import Experts from "@/pages/Experts";
@@ -27,7 +28,7 @@ function Router() {
   return (
     <AnimatePresence mode="wait">
       <Switch location={location} key={location}>
-        <Route path="/" component={Login} />
+        <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
         <Route path="/checkin" component={CheckIn} />
         <Route path="/dashboard" component={Dashboard} />
@@ -50,14 +51,7 @@ function App() {
           <QueryClientProvider client={queryClient}>
             <TooltipProvider>
               <WouterRouter base="">
-                <MoodBackground />
-                <MouseGlow />
-                <div className="flex min-h-screen flex-col relative">
-                  <main className="flex-1">
-                    <Router />
-                  </main>
-                </div>
-                <MusicPlayer />
+                <AppInner />
               </WouterRouter>
               <Toaster />
             </TooltipProvider>
@@ -65,6 +59,23 @@ function App() {
         </MoodProvider>
       </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+function AppInner() {
+  const [location] = useLocation();
+  const isClean = location === "/" || location === "/login";
+  return (
+    <>
+      {!isClean && <MoodBackground />}
+      {!isClean && <MouseGlow />}
+      <div className="flex min-h-screen flex-col relative">
+        <main className="flex-1">
+          <Router />
+        </main>
+      </div>
+      {!isClean && <MusicPlayer />}
+    </>
   );
 }
 

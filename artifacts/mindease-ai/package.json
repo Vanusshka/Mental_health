@@ -80,6 +80,7 @@
   },
   "dependencies": {
     "@studio-freight/lenis": "1.0.42",
+    "@supabase/supabase-js": "^2.105.4",
     "firebase": "11.9.0",
     "qrcode.react": "^4.2.0"
   }

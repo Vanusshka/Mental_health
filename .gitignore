@@ -54,3 +54,8 @@ Thumbs.db
 .env.*.local
 backend/.env
 artifacts/mindease-ai/.env
+__pycache__/
+package-lock.json
+*.pyc
+dist/
+.vscode/
