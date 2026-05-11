@@ -1,307 +1,245 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+/**
+ * MusicPlayer — Spotify mood-mapped music
+ * ─────────────────────────────────────────────────────────────────────────
+ * Maps each mood to a Spotify track and embeds it as a compact iframe.
+ * Visible ONLY during the emotional flow (/checkin, /mood).
+ * Hidden automatically on /dashboard, /session-summary, /doctor, /org, /experts.
+ *
+ * Happy  → Sunset Lover — Petit Biscuit
+ * Neutral→ Weightless   — Marconi Union
+ * Sad    → Nuvole Bianche — Ludovico Einaudi
+ */
+
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Music2, Pause, Play, Volume2, VolumeX } from "lucide-react";
-import { useMood, MoodType } from "@/contexts/MoodContext";
+import { Music2, ChevronDown, ChevronUp, X } from "lucide-react";
+import { useMood } from "@/contexts/MoodContext";
+import { useLocation } from "wouter";
 
-// Default volume: 0.08 (~25% — subtle and atmospheric)
-const DEFAULT_VOL = 0.08;
+// ── Spotify track IDs ──────────────────────────────────────────────────────
+const SPOTIFY_TRACKS: Record<string, { id: string; title: string; artist: string }> = {
+  happy: {
+    id: "3WRQUvzRvBDr4AxMWhXc5E",
+    title: "Sunset Lover",
+    artist: "Petit Biscuit",
+  },
+  neutral: {
+    id: "6kkwzB6hXLIONkEk9JciA6",
+    title: "Weightless",
+    artist: "Marconi Union",
+  },
+  sad: {
+    id: "2VdT56BGpdqNHUgOe1j5vc",
+    title: "Nuvole Bianche",
+    artist: "Ludovico Einaudi",
+  },
+};
 
-class AmbientAudioEngine {
-  private ctx: AudioContext | null = null;
-  private masterGain: GainNode | null = null;
-  private oscillators: OscillatorNode[] = [];
-  private lfos: OscillatorNode[] = [];
+// Pages where the player should be hidden
+const HIDDEN_PATHS = ["/dashboard", "/session-summary", "/doctor", "/org", "/experts", "/login", "/", "/role-select"];
 
-  private init() {
-    if (!this.ctx) {
-      this.ctx = new AudioContext();
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
-    }
-  }
-
-  async start(mood: NonNullable<MoodType>, volume = DEFAULT_VOL) {
-    this.init();
-    if (!this.ctx || !this.masterGain) return;
-    if (this.ctx.state === "suspended") await this.ctx.resume();
-    this.stopAll();
-
-    const now = this.ctx.currentTime;
-    this.masterGain.gain.cancelScheduledValues(now);
-    this.masterGain.gain.setValueAtTime(0, now);
-    // Gentle 3s fade-in
-    this.masterGain.gain.linearRampToValueAtTime(volume, now + 3);
-
-    if (mood === "happy") this.buildHappy();
-    else if (mood === "neutral") this.buildNeutral();
-    else this.buildSad();
-  }
-
-  // Adds a sine oscillator with optional slow LFO vibrato, routed through a warm lowpass filter
-  private addTone(
-    freq: number,
-    gainAmt: number,
-    startDelay = 0,
-    filterHz = 800,
-    vibratoRate = 0.25,
-    vibratoDepth = 0.004
-  ) {
-    if (!this.ctx || !this.masterGain) return;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
-
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(filterHz, this.ctx.currentTime);
-    filter.Q.setValueAtTime(0.8, this.ctx.currentTime);
-
-    gain.gain.setValueAtTime(0, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(gainAmt, this.ctx.currentTime + startDelay + 2.5);
-
-    // Slow natural vibrato
-    const lfo = this.ctx.createOscillator();
-    const lfoGain = this.ctx.createGain();
-    lfo.frequency.setValueAtTime(vibratoRate, this.ctx.currentTime);
-    lfoGain.gain.setValueAtTime(freq * vibratoDepth, this.ctx.currentTime);
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
-    lfo.start(this.ctx.currentTime + startDelay);
-    this.lfos.push(lfo);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(this.ctx.currentTime + startDelay);
-    this.oscillators.push(osc);
-  }
-
-  // --- 😊 HAPPY: Bright C major pentatonic — uplifting lo-fi feel ---
-  private buildHappy() {
-    // Root chord: C major (C4, E4, G4) — warm and uplifting
-    this.addTone(261.6, 0.12, 0, 1400, 0.2, 0.003);   // C4
-    this.addTone(329.6, 0.10, 0.3, 1600, 0.15, 0.003); // E4
-    this.addTone(392.0, 0.09, 0.6, 1800, 0.18, 0.003); // G4
-    // Upper melody: A4, C5 — cheerful brightness
-    this.addTone(440.0, 0.07, 1.0, 2200, 0.3, 0.004);  // A4
-    this.addTone(523.3, 0.06, 1.4, 2800, 0.35, 0.004); // C5
-    // Warm bass: C3 — grounded feel-good energy
-    this.addTone(130.8, 0.08, 0, 400, 0.1, 0.002);     // C3 sub
-    // Soft shimmer: E5 — light and airy
-    this.addTone(659.3, 0.03, 1.8, 3500, 0.4, 0.006);  // E5
-  }
-
-  // --- 😐 NEUTRAL: D pentatonic — calm ambient focus music ---
-  private buildNeutral() {
-    // Foundation: D3 drone — centered and stable
-    this.addTone(146.8, 0.09, 0, 350, 0.08, 0.002);    // D3 deep drone
-    // Mid layer: D4, G4, A4 — balanced and peaceful
-    this.addTone(293.7, 0.10, 0.2, 900, 0.2, 0.003);   // D4
-    this.addTone(392.0, 0.08, 0.5, 1000, 0.18, 0.003); // G4
-    this.addTone(440.0, 0.07, 0.8, 1100, 0.22, 0.003); // A4
-    // Soft upper layer: D5 — clarity and mental space
-    this.addTone(587.3, 0.04, 1.2, 1600, 0.3, 0.004);  // D5
-    // Subtle overtone: A5 — atmospheric texture
-    this.addTone(880.0, 0.02, 1.5, 2000, 0.25, 0.005); // A5 whisper
-  }
-
-  // --- 😔 SAD: A minor — emotional piano / ambient calming ---
-  private buildSad() {
-    // Deep foundation: A2 — safe and grounding
-    this.addTone(110.0, 0.08, 0, 300, 0.06, 0.002);    // A2 sub bass
-    // A minor chord: A3, C4, E4 — emotionally supportive, not dark
-    this.addTone(220.0, 0.11, 0.4, 600, 0.12, 0.003);  // A3
-    this.addTone(261.6, 0.10, 0.8, 700, 0.14, 0.003);  // C4
-    this.addTone(329.6, 0.09, 1.2, 800, 0.16, 0.003);  // E4
-    // Soft G4 — adds warmth to minor (not too dark)
-    this.addTone(392.0, 0.06, 1.6, 900, 0.18, 0.003);  // G4
-    // High longing note: E5 — gentle emotional release
-    this.addTone(659.3, 0.03, 2.0, 1200, 0.2, 0.005);  // E5
-  }
-
-  setVolume(vol: number) {
-    if (!this.masterGain || !this.ctx) return;
-    this.masterGain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.5);
-  }
-
-  fadeOut() {
-    if (!this.masterGain || !this.ctx) return;
-    this.masterGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1.5);
-  }
-
-  private stopAll() {
-    this.oscillators.forEach((o) => { try { o.stop(); } catch (_) {} });
-    this.lfos.forEach((l) => { try { l.stop(); } catch (_) {} });
-    this.oscillators = [];
-    this.lfos = [];
-  }
-}
-
-const engine = new AmbientAudioEngine();
+// Mood accent colors
+const MOOD_COLORS: Record<string, { accent: string; glow: string; gradient: string }> = {
+  happy:   { accent: "#f97316", glow: "rgba(251,191,36,0.35)", gradient: "linear-gradient(135deg,#fbbf24,#fb923c)" },
+  neutral: { accent: "#0ea5e9", glow: "rgba(56,189,248,0.30)", gradient: "linear-gradient(135deg,#38bdf8,#34d399)" },
+  sad:     { accent: "#6366f1", glow: "rgba(129,140,248,0.32)", gradient: "linear-gradient(135deg,#818cf8,#93c5fd)" },
+};
 
 export default function MusicPlayer() {
-  const { mood, theme } = useMood();
-  const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(DEFAULT_VOL);
-  const [showVolume, setShowVolume] = useState(false);
-  const prevMood = useRef<MoodType>(null);
+  const { mood } = useMood();
+  const [location] = useLocation();
+  const [expanded, setExpanded] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
-  useEffect(() => {
-    if (mood && mood !== prevMood.current) {
-      prevMood.current = mood;
-      engine.start(mood, muted ? 0 : volume);
-      setPlaying(true);
-    }
-  }, [mood, muted, volume]);
+  // Reset dismissed state when mood changes
+  const [lastMood, setLastMood] = useState(mood);
+  if (mood !== lastMood) {
+    setLastMood(mood);
+    setDismissed(false);
+  }
 
-  const togglePlay = useCallback(() => {
-    if (playing) {
-      engine.fadeOut();
-      setPlaying(false);
-    } else {
-      engine.setVolume(muted ? 0 : volume);
-      setPlaying(true);
-    }
-  }, [playing, muted, volume]);
+  // Hide on non-checkin pages or when dismissed or no mood
+  const shouldHide =
+    !mood ||
+    dismissed ||
+    HIDDEN_PATHS.some((p) => location === p) ||
+    location.startsWith("/workshop");
 
-  const toggleMute = useCallback(() => {
-    const next = !muted;
-    setMuted(next);
-    engine.setVolume(next ? 0 : volume);
-  }, [muted, volume]);
+  if (shouldHide) return null;
 
-  const handleVolumeChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = parseFloat(e.target.value);
-      setVolume(v);
-      if (!muted && playing) engine.setVolume(v);
-    },
-    [muted, playing]
-  );
+  const track = SPOTIFY_TRACKS[mood];
+  const colors = MOOD_COLORS[mood];
+  if (!track || !colors) return null;
 
-  const moodLabels: Record<string, string> = {
-    happy: "Uplifting Vibes",
-    neutral: "Focus Ambient",
-    sad: "Soothing Calm",
-  };
+  const embedUrl = `https://open.spotify.com/embed/track/${track.id}?utm_source=generator&theme=0&autoplay=1`;
 
-  if (!mood) return null;
+  const moodEmoji: Record<string, string> = { happy: "😊", neutral: "😐", sad: "😔" };
+  const moodLabel: Record<string, string> = { happy: "Uplifting Vibes", neutral: "Focus Ambient", sad: "Soothing Calm" };
 
   return (
     <AnimatePresence>
       <motion.div
-        key="music-player"
-        initial={{ opacity: 0, y: 30, scale: 0.85 }}
+        key={`player-${mood}`}
+        initial={{ opacity: 0, y: 40, scale: 0.88 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 30, scale: 0.85 }}
-        transition={{ type: "spring", stiffness: 280, damping: 22 }}
-        className="fixed bottom-6 right-6 z-50"
+        exit={{ opacity: 0, y: 40, scale: 0.88 }}
+        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+        style={{
+          position: "fixed",
+          bottom: "1.5rem",
+          right: "1.5rem",
+          zIndex: 50,
+          width: expanded ? 320 : "auto",
+        }}
       >
         <div
-          className="glass-card rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl"
           style={{
-            borderColor: theme ? `${theme.accent}22` : undefined,
-            boxShadow: theme
-              ? `0 8px 32px ${theme.glow}, 0 2px 8px rgba(0,0,0,0.06)`
-              : undefined,
+            background: "rgba(255,255,255,0.82)",
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
+            borderRadius: expanded ? 20 : 50,
+            border: `1px solid ${colors.accent}30`,
+            boxShadow: `0 8px 32px ${colors.glow}, 0 2px 8px rgba(0,0,0,0.06)`,
+            overflow: "hidden",
+            transition: "border-radius 0.3s ease",
           }}
         >
-          {/* Animated mood orb */}
-          <div className="relative flex-shrink-0">
-            <motion.div
-              className="w-9 h-9 rounded-full flex items-center justify-center"
+          {/* ── Collapsed pill ─────────────────────────────────── */}
+          {!expanded && (
+            <div
               style={{
-                background: theme
-                  ? `linear-gradient(135deg, ${theme.particle1}, ${theme.accent})`
-                  : "linear-gradient(135deg, #818cf8, #6366f1)",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                padding: "0.55rem 0.9rem 0.55rem 0.7rem",
+                cursor: "pointer",
               }}
-              animate={playing ? { scale: [1, 1.07, 1] } : {}}
-              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+              onClick={() => setExpanded(true)}
             >
-              <Music2 size={15} className="text-white" />
-            </motion.div>
-            {playing && (
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{ border: `2px solid ${theme?.particle1 || "#818cf8"}` }}
-                animate={{ scale: [1, 1.75], opacity: [0.55, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-              />
-            )}
-          </div>
-
-          {/* Label + volume slider */}
-          <div className="min-w-0">
-            <p className="text-xs font-semibold leading-none truncate">
-              {theme?.emoji} {mood ? moodLabels[mood] : ""}
-            </p>
-            <AnimatePresence mode="wait">
-              {showVolume ? (
+              {/* Pulsing orb */}
+              <div style={{ position: "relative", flexShrink: 0 }}>
                 <motion.div
-                  key="slider"
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 80 }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="mt-1.5 overflow-hidden"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: "50%",
+                    background: colors.gradient,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: `0 4px 14px ${colors.glow}`,
+                  }}
+                  animate={{ scale: [1, 1.08, 1] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <input
-                    type="range"
-                    min={0}
-                    max={0.3}
-                    step={0.01}
-                    value={muted ? 0 : volume}
-                    onChange={handleVolumeChange}
-                    className="w-20 h-1 accent-current cursor-pointer"
-                    style={{ accentColor: theme?.accent ?? "#6366f1" }}
-                  />
+                  <Music2 size={15} color="white" />
                 </motion.div>
-              ) : (
-                <motion.p
-                  key="label"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-[10px] text-muted-foreground mt-0.5"
-                >
-                  {playing ? "♪ Ambient playing..." : "Paused"}
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </div>
+                {/* Ripple */}
+                <motion.div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "50%",
+                    border: `2px solid ${colors.accent}`,
+                  }}
+                  animate={{ scale: [1, 1.8], opacity: [0.5, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                />
+              </div>
 
-          {/* Controls */}
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            <button
-              onClick={togglePlay}
-              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-black/8 dark:hover:bg-white/10 transition-colors"
-              title={playing ? "Pause" : "Play"}
-            >
-              {playing ? <Pause size={12} /> : <Play size={12} />}
-            </button>
-            <button
-              onClick={toggleMute}
-              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-black/8 dark:hover:bg-white/10 transition-colors"
-              title={muted ? "Unmute" : "Mute"}
-            >
-              {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
-            </button>
-            <button
-              onClick={() => setShowVolume((v) => !v)}
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors ${
-                showVolume
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="Adjust volume"
-            >
-              ≡
-            </button>
-          </div>
+              {/* Track info */}
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#111827", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+                  {moodEmoji[mood]} {moodLabel[mood]}
+                </p>
+                <p style={{ fontSize: "0.68rem", color: "#6b7280", whiteSpace: "nowrap", marginTop: 1 }}>
+                  {track.title} · {track.artist}
+                </p>
+              </div>
+
+              {/* Expand icon */}
+              <ChevronUp size={14} color="#9ca3af" style={{ flexShrink: 0 }} />
+            </div>
+          )}
+
+          {/* ── Expanded Spotify embed ──────────────────────────── */}
+          {expanded && (
+            <div>
+              {/* Header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.75rem 1rem 0.5rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <motion.div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: colors.gradient,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                    animate={{ scale: [1, 1.08, 1] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <Music2 size={13} color="white" />
+                  </motion.div>
+                  <div>
+                    <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "#111827", lineHeight: 1 }}>
+                      {moodEmoji[mood]} {moodLabel[mood]}
+                    </p>
+                    <p style={{ fontSize: "0.65rem", color: "#6b7280", marginTop: 1 }}>
+                      Mood-matched music
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "0.25rem" }}>
+                  <button
+                    onClick={() => setExpanded(false)}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 6, color: "#9ca3af" }}
+                    title="Collapse"
+                  >
+                    <ChevronDown size={15} />
+                  </button>
+                  <button
+                    onClick={() => setDismissed(true)}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 6, color: "#9ca3af" }}
+                    title="Close"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Spotify iframe */}
+              <div style={{ padding: "0 0.75rem 0.75rem" }}>
+                <iframe
+                  key={track.id}
+                  src={embedUrl}
+                  width="100%"
+                  height="80"
+                  frameBorder="0"
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  loading="lazy"
+                  style={{
+                    borderRadius: 12,
+                    display: "block",
+                    border: "none",
+                  }}
+                  title={`${track.title} by ${track.artist}`}
+                />
+                <p style={{ fontSize: "0.62rem", color: "#9ca3af", textAlign: "center", marginTop: "0.4rem" }}>
+                  Requires Spotify account · Opens in Spotify app
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </AnimatePresence>
