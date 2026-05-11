@@ -1,12 +1,38 @@
-import { useEffect, useState } from "react";
+/**
+ * MoodBackground
+ * ─────────────────────────────────────────────────────────────────────────
+ * Fullscreen video background that swaps based on selected mood.
+ * Videos: /happy.mp4 · /neutral.mp4 · /sad.mp4
+ *
+ * - autoplay, loop, muted, playsInline
+ * - object-cover fullscreen
+ * - smooth crossfade between moods via AnimatePresence
+ * - semi-transparent overlay for UI readability
+ * - floating particles + gradient blobs preserved on top
+ */
+
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMood } from "@/contexts/MoodContext";
 
-// Map mood → public video path
 const MOOD_VIDEOS: Record<string, string> = {
   happy:   "/happy.mp4",
   neutral: "/neutral.mp4",
   sad:     "/sad.mp4",
+};
+
+// Overlay opacity per mood — keeps UI readable while video is visible
+const OVERLAY_OPACITY: Record<string, number> = {
+  happy:   0.45,
+  neutral: 0.50,
+  sad:     0.48,
+};
+
+// Overlay tint per mood
+const OVERLAY_COLOR: Record<string, string> = {
+  happy:   "rgba(255,248,230,VAL)",   // warm golden tint
+  neutral: "rgba(236,248,255,VAL)",   // cool blue tint
+  sad:     "rgba(237,233,254,VAL)",   // soft violet tint
 };
 
 interface Particle {
@@ -17,20 +43,57 @@ interface Particle {
   duration: number;
   delay: number;
   color: string;
-  shape: "circle" | "diamond";
 }
 
-function generateParticles(color1: string, color2: string, count = 28): Particle[] {
+function generateParticles(color1: string, color2: string, count = 22): Particle[] {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
     y: Math.random() * 100,
-    size: Math.random() * 7 + 2,
+    size: Math.random() * 6 + 2,
     duration: Math.random() * 14 + 10,
     delay: Math.random() * 6,
-    color: i % 3 === 0 ? color1 : i % 3 === 1 ? color2 : `${color1}99`,
-    shape: Math.random() > 0.7 ? "diamond" : "circle",
+    color: i % 2 === 0 ? color1 : color2,
   }));
+}
+
+const PARTICLE_COLORS: Record<string, [string, string]> = {
+  happy:   ["#fbbf24", "#fb923c"],
+  neutral: ["#38bdf8", "#34d399"],
+  sad:     ["#818cf8", "#93c5fd"],
+};
+
+// Video element that auto-plays when mounted
+function VideoLayer({ src, opacity }: { src: string; opacity: number }) {
+  const ref = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    v.load();
+    v.play().catch(() => {});
+  }, [src]);
+
+  return (
+    <video
+      ref={ref}
+      key={src}
+      src={src}
+      autoPlay
+      loop
+      muted
+      playsInline
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        opacity,
+        willChange: "opacity",
+      }}
+    />
+  );
 }
 
 export default function MoodBackground() {
@@ -38,147 +101,131 @@ export default function MoodBackground() {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
-    if (theme) {
-      setParticles(generateParticles(theme.particle1, theme.particle2, 28));
+    if (mood && PARTICLE_COLORS[mood]) {
+      const [c1, c2] = PARTICLE_COLORS[mood];
+      setParticles(generateParticles(c1, c2, 22));
     } else {
       setParticles([]);
     }
-  }, [mood, theme]);
+  }, [mood]);
 
+  const videoSrc = mood ? MOOD_VIDEOS[mood] : null;
+  const overlayOpacity = mood ? OVERLAY_OPACITY[mood] : 0.6;
+  const overlayColor = mood
+    ? OVERLAY_COLOR[mood].replace("VAL", String(overlayOpacity))
+    : `rgba(248,246,255,0.60)`;
+
+  // Default gradient when no mood selected
   const defaultGradient =
-    "radial-gradient(ellipse at 20% 30%, #f3f0ff 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, #e8f4fd 0%, transparent 50%), linear-gradient(145deg, #f8f6ff 0%, #f0f4ff 100%)";
-
-  // Resolve video src — null when no mood selected
-  const videoSrc = mood ? MOOD_VIDEOS[mood] ?? null : null;
+    "radial-gradient(ellipse at 20% 30%,#f3f0ff 0%,transparent 55%),radial-gradient(ellipse at 80% 20%,#e8f4fd 0%,transparent 50%),linear-gradient(145deg,#f8f6ff 0%,#f0f4ff 100%)";
 
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: -10,
+        overflow: "hidden",
+        pointerEvents: "none",
+      }}
+    >
+      {/* ── Default gradient base (always present) ─────────────── */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: defaultGradient,
+        }}
+      />
 
-      {/* ── Mood video layer — renders behind gradient blobs ─────── */}
-      {/* Key on videoSrc forces React to unmount/remount the <video>  */}
-      {/* element when the mood changes, triggering fresh autoplay.    */}
-      <AnimatePresence mode="sync">
+      {/* ── Video layer with crossfade ──────────────────────────── */}
+      <AnimatePresence mode="crossfade">
         {videoSrc && (
           <motion.div
             key={videoSrc}
-            className="absolute inset-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.4, ease: "easeInOut" }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
+            style={{ position: "absolute", inset: 0 }}
           >
-            <video
-              key={videoSrc}
-              src={videoSrc}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ opacity: 0.35 }}
-            />
+            <VideoLayer src={videoSrc} opacity={0.55} />
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Animated gradient base */}
+
+      {/* ── Mood-tinted overlay for readability ────────────────── */}
       <motion.div
-        className="absolute inset-0"
-        animate={{
-          background: theme ? theme.gradientCSS : defaultGradient,
-        }}
-        transition={{ duration: 1.8, ease: [0.4, 0, 0.2, 1] }}
+        animate={{ background: overlayColor }}
+        transition={{ duration: 1.4, ease: "easeInOut" }}
+        style={{ position: "absolute", inset: 0 }}
       />
 
-      {/* Blob 1 — top left */}
+      {/* ── Animated gradient blobs on top ─────────────────────── */}
       <motion.div
-        className="absolute rounded-full blur-[80px]"
-        style={{ width: "55vw", height: "55vw", top: "-15%", left: "-15%", opacity: 0.32 }}
+        style={{
+          position: "absolute",
+          width: "55vw",
+          height: "55vw",
+          top: "-15%",
+          left: "-15%",
+          borderRadius: "50%",
+          filter: "blur(80px)",
+          opacity: 0.22,
+          pointerEvents: "none",
+        }}
         animate={{
           background: theme
-            ? `radial-gradient(circle, ${theme.bg1}, transparent 70%)`
-            : "radial-gradient(circle, #f3f0ff, transparent 70%)",
-          x: [0, 35, -15, 0],
-          y: [0, -25, 20, 0],
+            ? `radial-gradient(circle,${theme.bg1},transparent 70%)`
+            : "radial-gradient(circle,#f3f0ff,transparent 70%)",
+          x: [0, 30, -15, 0],
+          y: [0, -20, 18, 0],
         }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
-
-      {/* Blob 2 — bottom right */}
       <motion.div
-        className="absolute rounded-full blur-[80px]"
-        style={{ width: "45vw", height: "45vw", bottom: "-12%", right: "-10%", opacity: 0.32 }}
+        style={{
+          position: "absolute",
+          width: "42vw",
+          height: "42vw",
+          bottom: "-12%",
+          right: "-10%",
+          borderRadius: "50%",
+          filter: "blur(80px)",
+          opacity: 0.20,
+          pointerEvents: "none",
+        }}
         animate={{
           background: theme
-            ? `radial-gradient(circle, ${theme.bg2}, transparent 70%)`
-            : "radial-gradient(circle, #e8f4fd, transparent 70%)",
-          x: [0, -30, 20, 0],
-          y: [0, 30, -20, 0],
+            ? `radial-gradient(circle,${theme.bg2},transparent 70%)`
+            : "radial-gradient(circle,#e8f4fd,transparent 70%)",
+          x: [0, -25, 18, 0],
+          y: [0, 25, -18, 0],
         }}
         transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 3 }}
       />
 
-      {/* Blob 3 — center */}
-      <motion.div
-        className="absolute rounded-full blur-[100px]"
-        style={{ width: "38vw", height: "38vw", top: "35%", left: "28%", opacity: 0.3 }}
-        animate={{
-          background: theme
-            ? `radial-gradient(circle, ${theme.bg3}, transparent 70%)`
-            : "radial-gradient(circle, #f0f4ff, transparent 70%)",
-          x: [0, 25, -20, 10, 0],
-          y: [0, -20, 25, -10, 0],
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 6 }}
-      />
-
-      {/* Shimmer rays — happy only */}
-      <AnimatePresence>
-        {mood === "happy" && (
-          <>
-            {[0, 60, 120].map((angle, i) => (
-              <motion.div
-                key={`ray-${i}`}
-                className="absolute pointer-events-none"
-                style={{
-                  width: "2px",
-                  height: "40vh",
-                  top: "10%",
-                  left: "50%",
-                  transformOrigin: "top center",
-                  rotate: angle,
-                  background: "linear-gradient(to bottom, #fbbf2440, transparent)",
-                }}
-                initial={{ opacity: 0, scaleY: 0 }}
-                animate={{ opacity: [0, 0.4, 0], scaleY: [0, 1, 0] }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 4, repeat: Infinity, delay: i * 1.5, ease: "easeInOut" }}
-              />
-            ))}
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Floating particles */}
+      {/* ── Floating particles ──────────────────────────────────── */}
       <AnimatePresence mode="sync">
         {particles.map((p) => (
           <motion.div
             key={`${mood}-p${p.id}`}
-            className="absolute"
             style={{
+              position: "absolute",
               left: `${p.x}%`,
               top: `${p.y}%`,
               width: p.size,
               height: p.size,
               background: p.color,
-              borderRadius: p.shape === "circle" ? "50%" : "3px",
-              rotate: p.shape === "diamond" ? 45 : 0,
+              borderRadius: "50%",
               opacity: 0,
+              pointerEvents: "none",
             }}
             animate={{
-              opacity: [0, 0.65, 0.35, 0.65, 0],
-              scale: [0.8, 1.2, 0.9, 1.1, 0.8],
-              y: [0, -(30 + p.size * 4), -(10 + p.size * 2), -(40 + p.size * 5), 0],
-              x: [0, p.id % 2 === 0 ? 15 : -15, p.id % 2 === 0 ? -8 : 8, 0],
+              opacity: [0, 0.6, 0.3, 0.6, 0],
+              scale: [0.8, 1.3, 0.9, 1.2, 0.8],
+              y: [0, -(30 + p.size * 4), -(15 + p.size * 2), -(40 + p.size * 5), 0],
+              x: [0, p.id % 2 === 0 ? 12 : -12, p.id % 2 === 0 ? -6 : 6, 0],
             }}
             transition={{
               duration: p.duration,
@@ -190,12 +237,59 @@ export default function MoodBackground() {
         ))}
       </AnimatePresence>
 
-      {/* Soft vignette overlay */}
+      {/* ── Sunlight rays for happy mood ───────────────────────── */}
+      <AnimatePresence>
+        {mood === "happy" && (
+          <>
+            {[0, 60, 120, 180].map((angle, i) => (
+              <motion.div
+                key={`ray-${i}`}
+                style={{
+                  position: "absolute",
+                  width: 2,
+                  height: "45vh",
+                  top: "5%",
+                  left: "50%",
+                  transformOrigin: "top center",
+                  rotate: angle,
+                  background: "linear-gradient(to bottom,rgba(251,191,36,0.35),transparent)",
+                  pointerEvents: "none",
+                }}
+                initial={{ opacity: 0, scaleY: 0 }}
+                animate={{ opacity: [0, 0.5, 0], scaleY: [0, 1, 0] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 4, repeat: Infinity, delay: i * 1.2, ease: "easeInOut" }}
+              />
+            ))}
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Breathing mist for sad mood ────────────────────────── */}
+      <AnimatePresence>
+        {mood === "sad" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.18, 0.08, 0.18, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "radial-gradient(ellipse at 50% 60%,rgba(129,140,248,0.25),transparent 65%)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Soft vignette ──────────────────────────────────────── */}
       <div
-        className="absolute inset-0"
         style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 60%, rgba(255,255,255,0.08) 100%)",
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.08) 100%)",
+          pointerEvents: "none",
         }}
       />
     </div>
