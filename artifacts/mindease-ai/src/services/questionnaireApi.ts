@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Questionnaire API Service
  * Calls POST /generate-questions on the FastAPI backend.
  * Gemini generates empathetic follow-up questions server-side.
@@ -15,7 +15,7 @@ export interface QuestionnaireResponse {
   questions: string[];
 }
 
-const BACKEND_URL = "http://127.0.0.1:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
 
 /**
  * Sends emotion analysis results to the backend and receives

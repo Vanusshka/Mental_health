@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Context Response API Service
  * Calls POST /generate-response on the FastAPI backend.
  * Gemini generates a personalised, context-aware emotional response.
  * Used for happy and neutral users after they share their context.
  */
 
-const BACKEND_URL = "http://127.0.0.1:8000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
 
 export interface ContextResponseRequest {
   mood: "happy" | "neutral";

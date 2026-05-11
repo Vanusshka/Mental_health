@@ -108,20 +108,12 @@ export default function Navigation() {
             {/* User avatar + sign-out */}
             {user && (
               <div className="flex items-center gap-2 ml-1">
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName ?? "User"}
-                    className="w-8 h-8 rounded-full border-2 border-white/60 shadow-sm"
-                  />
-                ) : (
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
-                    style={{ background: accentColor }}
-                  >
-                    {(user.displayName ?? user.email ?? "U")[0].toUpperCase()}
-                  </div>
-                )}
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+                  style={{ background: accentColor }}
+                >
+                  {(user.display_name ?? user.email ?? "U")[0].toUpperCase()}
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"

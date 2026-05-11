@@ -11,10 +11,20 @@ import { downloadOrgReport } from "@/utils/downloadReport";
 
 const COLORS = { happy: "#10b981", neutral: "#06b6d4", sad: "#f87171" };
 
-function CreateWorkshopModal({ onCreated, onClose, orgId }) {
-  const [form, setForm] = useState({ workshop_name: "", description: "", date: "" });
+function CreateWorkshopModal({ onCreated, onClose, orgId }: {
+  onCreated: (w: Workshop) => void;
+  onClose: () => void;
+  orgId: string;
+}) {
+  const [form, setForm] = useState<{ workshop_name: string; description: string; date: string }>({ workshop_name: "", description: "", date: "" });
   const [loading, setLoading] = useState(false);
-  const inp = { width: "100%", padding: "0.6rem 0.9rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.9rem", outline: "none", marginTop: "0.3rem", boxSizing: "border-box", fontFamily: "inherit" };
+  const inp: React.CSSProperties = { width: "100%", padding: "0.6rem 0.9rem", borderRadius: 10, border: "1px solid #e5e7eb", fontSize: "0.9rem", outline: "none", marginTop: "0.3rem", boxSizing: "border-box", fontFamily: "inherit" };
+
+  const fields: [string, keyof typeof form][] = [
+    ["Workshop Title *", "workshop_name"],
+    ["Description", "description"],
+    ["Date (YYYY-MM-DD)", "date"],
+  ];
 
   async function submit() {
     if (!form.workshop_name) return;
@@ -32,7 +42,7 @@ function CreateWorkshopModal({ onCreated, onClose, orgId }) {
           <h2 style={{ fontSize: "1.2rem", fontWeight: 700 }}>Create Workshop / Event</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} /></button>
         </div>
-        {[["Workshop Title *", "workshop_name"], ["Description", "description"], ["Date (YYYY-MM-DD)", "date"]].map(([label, key]) => (
+        {fields.map(([label, key]) => (
           <div key={key} style={{ marginBottom: "1rem" }}>
             <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#374151" }}>{label}</label>
             <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} placeholder={label} style={inp} />
@@ -46,7 +56,7 @@ function CreateWorkshopModal({ onCreated, onClose, orgId }) {
   );
 }
 
-function QRModal({ workshop, onClose }) {
+function QRModal({ workshop, onClose }: { workshop: Workshop; onClose: () => void }) {
   const [analytics, setAnalytics] = useState<WorkshopAnalytics | null>(null);
 
   async function refresh() {
@@ -90,7 +100,7 @@ function QRModal({ workshop, onClose }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
               {[["Total Check-ins", analytics.total_checkins, "#8b5cf6"], ["Avg Stress", analytics.avg_stress + "/10", "#f87171"], ["Stressed %", analytics.stressed_percent + "%", "#fb923c"]].map(([l, v, c]) => (
                 <div key={l} style={{ textAlign: "center", padding: "0.75rem", background: "#f8fafc", borderRadius: 12, border: "1px solid #e5e7eb" }}>
-                  <p style={{ fontSize: "1.3rem", fontWeight: 800, color: c }}>{v}</p>
+                  <p style={{ fontSize: "1.3rem", fontWeight: 800, color: String(c) }}>{v}</p>
                   <p style={{ fontSize: "0.7rem", color: "#6b7280" }}>{l}</p>
                 </div>
               ))}

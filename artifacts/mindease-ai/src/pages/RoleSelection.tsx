@@ -85,8 +85,8 @@ export default function RoleSelection() {
     setError(null);
     try {
       await setUserRole(
-        user.uid,
-        user.displayName ?? "Anonymous",
+        user.id,
+        user.display_name ?? "Anonymous",
         user.email ?? "",
         selected,
       );
@@ -133,7 +133,7 @@ export default function RoleSelection() {
             variants={{ hidden: { opacity: 0, y: 14, filter: "blur(4px)" }, visible: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.6, ease: EASE } } }}
             className="text-3xl md:text-4xl font-semibold tracking-tight mb-3"
           >
-            Welcome{user?.displayName ? `, ${user.displayName.split(" ")[0]}` : ""}
+            Welcome{user?.display_name ? `, ${user.display_name.split(" ")[0]}` : ""}
           </motion.h1>
 
           <motion.p

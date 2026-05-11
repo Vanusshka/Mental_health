@@ -146,7 +146,7 @@ export default function MoodBackground() {
       <div style={{ position: "absolute", inset: 0, background: defaultGradient }} />
 
       {/* ── Video layer — stays until assessment done ───────────── */}
-      <AnimatePresence mode="crossfade">
+      <AnimatePresence mode="sync">
         {videoSrc && (
           <motion.div
             key={videoSrc}

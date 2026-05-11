@@ -25,10 +25,14 @@ function computeTrend(records: EmotionalCheckin[]): "improving"|"stable"|"declin
   return "stable";
 }
 
-function AddPatientModal({ onAdd, onClose, doctorId }) {
-  const [form, setForm] = useState({ name:"", age:"", condition:"", notes:"" });
+function AddPatientModal({ onAdd, onClose, doctorId }: {
+  onAdd: (p: Patient) => void;
+  onClose: () => void;
+  doctorId: string;
+}) {
+  const [form, setForm] = useState<{ name: string; age: string; condition: string; notes: string }>({ name:"", age:"", condition:"", notes:"" });
   const [loading, setLoading] = useState(false);
-  const inp = { width:"100%", padding:"0.6rem 0.9rem", borderRadius:10, border:"1px solid #e5e7eb", fontSize:"0.9rem", outline:"none", marginTop:"0.3rem", boxSizing:"border-box" as const, fontFamily:"inherit" };
+  const inp: React.CSSProperties = { width:"100%", padding:"0.6rem 0.9rem", borderRadius:10, border:"1px solid #e5e7eb", fontSize:"0.9rem", outline:"none", marginTop:"0.3rem", boxSizing:"border-box", fontFamily:"inherit" };
   async function submit() {
     if (!form.name || !form.condition) return;
     setLoading(true);
@@ -38,6 +42,12 @@ function AddPatientModal({ onAdd, onClose, doctorId }) {
     else alert("Could not save patient. Check Supabase connection.");
     onClose();
   }
+  const fields: [string, keyof typeof form, string][] = [
+    ["Patient Name *","name","text"],
+    ["Age","age","number"],
+    ["Condition *","condition","text"],
+    ["Initial Notes","notes","text"],
+  ];
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"1rem"}}>
       <motion.div initial={{opacity:0,scale:0.9}} animate={{opacity:1,scale:1}} style={{background:"white",borderRadius:24,padding:"2rem",width:"100%",maxWidth:440,boxShadow:"0 24px 64px rgba(0,0,0,0.15)"}}>
@@ -45,7 +55,7 @@ function AddPatientModal({ onAdd, onClose, doctorId }) {
           <h2 style={{fontSize:"1.2rem",fontWeight:700}}>Add New Patient</h2>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer"}}><X size={20} /></button>
         </div>
-        {[["Patient Name *","name","text"],["Age","age","number"],["Condition *","condition","text"],["Initial Notes","notes","text"]].map(([label,key,type])=>(
+        {fields.map(([label, key, type]) => (
           <div key={key} style={{marginBottom:"1rem"}}>
             <label style={{fontSize:"0.8rem",fontWeight:600,color:"#374151"}}>{label}</label>
             <input type={type} value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})} placeholder={label} style={inp} />
@@ -109,7 +119,7 @@ export default function Doctor() {
   const avgWellness = checkins.length ? Math.round(checkins.reduce((s,c)=>s+c.wellness_score,0)/checkins.length) : 0;
 
   const chartData = checkins.map((c, i) => ({
-    s: c.session_number ? `S${c.session_number}` : `S${i+1}`,
+    session: c.session_number ? `S${c.session_number}` : `S${i+1}`,
     score: c.wellness_score,
     stress: c.stress_score,
   }));
@@ -279,7 +289,7 @@ export default function Doctor() {
                         <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f87171" stopOpacity={0.25}/><stop offset="95%" stopColor="#f87171" stopOpacity={0}/></linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                      <XAxis dataKey="s" tick={{fontSize:11}} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="session" tick={{fontSize:11}} axisLine={false} tickLine={false} />
                       <YAxis domain={[0,100]} tick={{fontSize:11}} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{borderRadius:12,fontSize:12,border:"1px solid rgba(0,0,0,0.08)"}} />
                       <Area type="monotone" dataKey="score" stroke="#0ea5e9" fill="url(#wg)" strokeWidth={2.5} dot={{fill:"#0ea5e9",r:4}} name="Wellness Score" />

@@ -1,10 +1,9 @@
 /**
- * Supabase Data Service
- * Replaces firestoreService.ts — all DB operations via Supabase.
+ * Supabase Data Service — typed with explicit casts to avoid never[] errors
  */
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import type { EmotionalCheckin, Workshop, WorkshopParticipant, Patient } from "@/lib/database.types";
+import type { EmotionalCheckin, Workshop, Patient } from "@/lib/database.types";
 import type { EmotionScore } from "@/services/emotionApi";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -42,8 +41,8 @@ export async function saveCheckin(input: SaveCheckinInput): Promise<string | nul
   const dominant = input.emotions[0] ?? { label: "neutral", score: 0 };
   const indicators = indicatorsByMood(input.mood);
 
-  const { data, error } = await supabase
-    .from("emotional_checkins")
+  const { data, error } = await (supabase
+    .from("emotional_checkins") as any)
     .insert({
       user_id:             input.user_id ?? null,
       display_name:        input.display_name ?? "Anonymous",
@@ -65,30 +64,30 @@ export async function saveCheckin(input: SaveCheckinInput): Promise<string | nul
     .single();
 
   if (error) { console.error("[Supabase] saveCheckin error:", error.message); return null; }
-  return data?.id ?? null;
+  return (data as { id: string } | null)?.id ?? null;
 }
 
 export async function getRecentCheckins(userId: string, count = 10): Promise<EmotionalCheckin[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase
-    .from("emotional_checkins")
+  const { data, error } = await (supabase
+    .from("emotional_checkins") as any)
     .select("*")
     .eq("user_id", userId)
     .order("timestamp", { ascending: false })
     .limit(count);
   if (error) { console.error("[Supabase] getRecentCheckins:", error.message); return []; }
-  return data ?? [];
+  return (data ?? []) as EmotionalCheckin[];
 }
 
 export async function getAllCheckins(limit = 200): Promise<EmotionalCheckin[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase
-    .from("emotional_checkins")
+  const { data, error } = await (supabase
+    .from("emotional_checkins") as any)
     .select("*")
     .order("timestamp", { ascending: false })
     .limit(limit);
   if (error) { console.error("[Supabase] getAllCheckins:", error.message); return []; }
-  return data ?? [];
+  return (data ?? []) as EmotionalCheckin[];
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────
@@ -106,29 +105,29 @@ export interface EmotionalAnalytics {
 export async function getOrgAnalytics(): Promise<EmotionalAnalytics> {
   if (!isSupabaseConfigured) return fallbackAnalytics();
 
-  const { data, error } = await supabase
-    .from("emotional_checkins")
+  const { data, error } = await (supabase
+    .from("emotional_checkins") as any)
     .select("mood, stress_score, wellness_score, timestamp")
     .order("timestamp", { ascending: false })
     .limit(500);
 
-  if (error || !data || data.length === 0) return fallbackAnalytics();
+  if (error || !data || (data as EmotionalCheckin[]).length === 0) return fallbackAnalytics();
 
-  const total = data.length;
-  const happy   = data.filter(d => d.mood === "happy").length;
-  const neutral = data.filter(d => d.mood === "neutral").length;
-  const sad     = data.filter(d => d.mood === "sad").length;
-  const avg_stress  = Math.round(data.reduce((s, d) => s + (d.stress_score ?? 5), 0) / total);
-  const avg_wellness = Math.round(data.reduce((s, d) => s + (d.wellness_score ?? 60), 0) / total);
+  const rows = data as EmotionalCheckin[];
+  const total = rows.length;
+  const happy   = rows.filter(d => d.mood === "happy").length;
+  const neutral = rows.filter(d => d.mood === "neutral").length;
+  const sad     = rows.filter(d => d.mood === "sad").length;
+  const avg_stress   = Math.round(rows.reduce((s, d) => s + (d.stress_score ?? 5), 0) / total);
+  const avg_wellness = Math.round(rows.reduce((s, d) => s + (d.wellness_score ?? 60), 0) / total);
 
-  // Build 6-week trend
   const now = new Date();
   const trend_data = Array.from({ length: 6 }, (_, i) => {
     const weekStart = new Date(now);
     weekStart.setDate(now.getDate() - (5 - i) * 7);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 7);
-    const week = data.filter(d => {
+    const week = rows.filter(d => {
       const t = new Date(d.timestamp);
       return t >= weekStart && t < weekEnd;
     });
@@ -172,7 +171,6 @@ export interface CreateWorkshopInput {
 
 export async function createWorkshop(input: CreateWorkshopInput): Promise<Workshop | null> {
   if (!isSupabaseConfigured) {
-    // Fallback: return mock workshop
     return {
       id: Math.random().toString(36).slice(2, 10).toUpperCase(),
       workshop_name: input.workshop_name,
@@ -185,8 +183,8 @@ export async function createWorkshop(input: CreateWorkshopInput): Promise<Worksh
     };
   }
 
-  const { data, error } = await supabase
-    .from("workshops")
+  const { data, error } = await (supabase
+    .from("workshops") as any)
     .insert({
       workshop_name:     input.workshop_name,
       description:       input.description ?? null,
@@ -198,23 +196,36 @@ export async function createWorkshop(input: CreateWorkshopInput): Promise<Worksh
     .single();
 
   if (error) { console.error("[Supabase] createWorkshop:", error.message); return null; }
-  return data;
+  return data as Workshop;
 }
 
 export async function getWorkshops(orgId?: string): Promise<Workshop[]> {
   if (!isSupabaseConfigured) return [];
-  let q = supabase.from("workshops").select("*").order("created_at", { ascending: false });
-  if (orgId) q = q.eq("organization_id", orgId);
-  const { data, error } = await q;
+  const q = (supabase.from("workshops") as any).select("*").order("created_at", { ascending: false });
+  const { data, error } = orgId ? await q.eq("organization_id", orgId) : await q;
   if (error) { console.error("[Supabase] getWorkshops:", error.message); return []; }
-  return data ?? [];
+  return (data ?? []) as Workshop[];
+}
+
+export async function getAllWorkshops(): Promise<Workshop[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await (supabase
+    .from("workshops") as any)
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) { console.error("[Supabase] getAllWorkshops:", error.message); return []; }
+  return (data ?? []) as Workshop[];
 }
 
 export async function getWorkshopById(id: string): Promise<Workshop | null> {
   if (!isSupabaseConfigured) return null;
-  const { data, error } = await supabase.from("workshops").select("*").eq("id", id).single();
+  const { data, error } = await (supabase
+    .from("workshops") as any)
+    .select("*")
+    .eq("id", id)
+    .single();
   if (error) return null;
-  return data;
+  return data as Workshop;
 }
 
 // ── Workshop Participants ─────────────────────────────────────────────────
@@ -224,10 +235,10 @@ export async function addWorkshopParticipant(
   mood: "happy" | "neutral" | "sad",
   stressScore: number
 ): Promise<boolean> {
-  if (!isSupabaseConfigured) return true; // silent success in demo
+  if (!isSupabaseConfigured) return true;
 
-  const { error } = await supabase
-    .from("workshop_participants")
+  const { error } = await (supabase
+    .from("workshop_participants") as any)
     .insert({ workshop_id: workshopId, participant_mood: mood, stress_score: stressScore });
 
   if (error) { console.error("[Supabase] addParticipant:", error.message); return false; }
@@ -249,20 +260,21 @@ export async function getWorkshopAnalytics(workshopId: string): Promise<Workshop
     return { workshop, total_checkins: 0, distribution: { happy: 0, neutral: 0, sad: 0 }, avg_stress: 0, stressed_percent: 0 };
   }
 
-  const { data, error } = await supabase
-    .from("workshop_participants")
+  const { data, error } = await (supabase
+    .from("workshop_participants") as any)
     .select("participant_mood, stress_score")
     .eq("workshop_id", workshopId);
 
-  if (error || !data || data.length === 0) {
+  if (error || !data || (data as { participant_mood: string; stress_score: number }[]).length === 0) {
     return { workshop, total_checkins: 0, distribution: { happy: 0, neutral: 0, sad: 0 }, avg_stress: 0, stressed_percent: 0 };
   }
 
-  const total = data.length;
-  const happy   = data.filter(d => d.participant_mood === "happy").length;
-  const neutral = data.filter(d => d.participant_mood === "neutral").length;
-  const sad     = data.filter(d => d.participant_mood === "sad").length;
-  const avg_stress = Math.round(data.reduce((s, d) => s + (d.stress_score ?? 5), 0) / total * 10) / 10;
+  const rows = data as { participant_mood: string; stress_score: number }[];
+  const total = rows.length;
+  const happy   = rows.filter(d => d.participant_mood === "happy").length;
+  const neutral = rows.filter(d => d.participant_mood === "neutral").length;
+  const sad     = rows.filter(d => d.participant_mood === "sad").length;
+  const avg_stress = Math.round(rows.reduce((s, d) => s + (d.stress_score ?? 5), 0) / total * 10) / 10;
 
   return {
     workshop,
@@ -277,7 +289,7 @@ export async function getWorkshopAnalytics(workshopId: string): Promise<Workshop
   };
 }
 
-// ── Patient Management (Doctor Portal) ───────────────────────────────────
+// ── Patient Management ────────────────────────────────────────────────────
 
 export interface CreatePatientInput {
   doctor_id: string;
@@ -291,45 +303,54 @@ export async function createPatient(input: CreatePatientInput): Promise<Patient 
   if (!isSupabaseConfigured) {
     return { id: crypto.randomUUID(), doctor_id: input.doctor_id, name: input.name, age: input.age ?? null, condition: input.condition ?? null, notes: input.notes ?? null, created_at: new Date().toISOString() };
   }
-  const { data, error } = await supabase.from("patients").insert({ doctor_id: input.doctor_id, name: input.name, age: input.age ?? null, condition: input.condition ?? null, notes: input.notes ?? null }).select().single();
+  const { data, error } = await (supabase
+    .from("patients") as any)
+    .insert({ doctor_id: input.doctor_id, name: input.name, age: input.age ?? null, condition: input.condition ?? null, notes: input.notes ?? null })
+    .select()
+    .single();
   if (error) { console.error("[Supabase] createPatient:", error.message); return null; }
-  return data;
+  return data as Patient;
 }
 
 export async function getPatientsByDoctor(doctorId: string): Promise<Patient[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.from("patients").select("*").eq("doctor_id", doctorId).order("created_at", { ascending: false });
+  const { data, error } = await (supabase
+    .from("patients") as any)
+    .select("*")
+    .eq("doctor_id", doctorId)
+    .order("created_at", { ascending: false });
   if (error) { console.error("[Supabase] getPatients:", error.message); return []; }
-  return data ?? [];
+  return (data ?? []) as Patient[];
 }
 
 export async function updatePatientNotes(patientId: string, notes: string): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
-  const { error } = await supabase.from("patients").update({ notes }).eq("id", patientId);
+  const { error } = await (supabase
+    .from("patients") as any)
+    .update({ notes })
+    .eq("id", patientId);
   if (error) { console.error("[Supabase] updateNotes:", error.message); return false; }
   return true;
 }
 
 export async function getCheckinsByPatient(patientId: string): Promise<EmotionalCheckin[]> {
   if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.from("emotional_checkins").select("*").eq("patient_id", patientId).order("timestamp", { ascending: true });
+  const { data, error } = await (supabase
+    .from("emotional_checkins") as any)
+    .select("*")
+    .eq("patient_id", patientId)
+    .order("timestamp", { ascending: true });
   if (error) { console.error("[Supabase] getCheckinsByPatient:", error.message); return []; }
-  return data ?? [];
+  return (data ?? []) as EmotionalCheckin[];
 }
 
 export async function getNextSessionNumber(patientId: string): Promise<number> {
   if (!isSupabaseConfigured) return 1;
-  const { count } = await supabase.from("emotional_checkins").select("*", { count: "exact", head: true }).eq("patient_id", patientId);
+  const { count } = await (supabase
+    .from("emotional_checkins") as any)
+    .select("*", { count: "exact", head: true })
+    .eq("patient_id", patientId);
   return (count ?? 0) + 1;
-}
-
-// ── Workshops — public list for users ────────────────────────────────────
-
-export async function getAllWorkshops(): Promise<Workshop[]> {
-  if (!isSupabaseConfigured) return [];
-  const { data, error } = await supabase.from("workshops").select("*").order("created_at", { ascending: false });
-  if (error) { console.error("[Supabase] getAllWorkshops:", error.message); return []; }
-  return data ?? [];
 }
 
 // ── Doctor Portal — Patient Summaries ────────────────────────────────────
@@ -349,7 +370,6 @@ export async function getAllPatientSummaries(): Promise<PatientSummary[]> {
   const checkins = await getAllCheckins(300);
   if (checkins.length === 0) return [];
 
-  // Group by user_id
   const byUser = new Map<string, EmotionalCheckin[]>();
   for (const c of checkins) {
     const key = c.user_id ?? c.display_name ?? "anon";
@@ -373,7 +393,7 @@ export async function getAllPatientSummaries(): Promise<PatientSummary[]> {
     });
   }
 
-  const ORDER = { critical: 0, declining: 1, stable: 2, improving: 3 };
+  const ORDER: Record<string, number> = { critical: 0, declining: 1, stable: 2, improving: 3 };
   return summaries.sort((a, b) => ORDER[a.trend] - ORDER[b.trend]);
 }
 
