@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+﻿import { Link, useLocation } from "wouter";
 import { useTheme } from "./ThemeProvider";
 import { Moon, Sun, Menu, X, Brain, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
@@ -64,7 +64,7 @@ export default function Navigation() {
               />
             </motion.div>
             <span className="text-xl font-semibold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              MindEase AI
+              MANAS
             </span>
           </Link>
 

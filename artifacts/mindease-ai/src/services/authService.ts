@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Auth Service — Simple session auth (no Firebase)
  * Uses localStorage to persist role/session for demo.
  * Replace with Supabase Auth in production.
@@ -13,7 +13,7 @@ export interface SessionUser {
   role: UserRole;
 }
 
-const SESSION_KEY = "mindease_session";
+const SESSION_KEY = "MANAS_session";
 
 export function getSession(): SessionUser | null {
   try {

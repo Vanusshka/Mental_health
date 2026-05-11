@@ -1,10 +1,7 @@
 /**
  * Dashboard — Emotional Wellness Insights
- * ─────────────────────────────────────────────────────────────────────────
- * A personal emotional wellness reflection space.
- * Integrates with MoodContext for adaptive theming.
- * Uses semi-static curated data + latest assessment signals.
- * NO fake patient names, NO admin metrics, NO hospital data.
+ * Real data from Supabase. No fake trend data.
+ * 7-day trend only shown when user has real history.
  */
 
 import { useRef, useState, useEffect } from "react";
@@ -28,19 +25,6 @@ import type { EmotionalCheckin } from "@/lib/database.types";
 import { getRecommendations } from "@/services/doctorRecommendationService";
 import DoctorRecommendationCard from "@/components/DoctorRecommendationCard";
 import { downloadUserReport } from "@/utils/downloadReport";
-
-// ── Semi-static wellness trend data ───────────────────────────────────────
-// Represents a believable 7-day emotional wellness arc.
-// Intentionally gentle — not perfectly linear, not obviously fake.
-const TREND_DATA = [
-  { day: "Mon", balance: 52, stress: 68, energy: 48 },
-  { day: "Tue", balance: 55, stress: 64, energy: 52 },
-  { day: "Wed", balance: 49, stress: 72, energy: 44 },
-  { day: "Thu", balance: 61, stress: 60, energy: 58 },
-  { day: "Fri", balance: 67, stress: 54, energy: 63 },
-  { day: "Sat", balance: 72, stress: 48, energy: 70 },
-  { day: "Sun", balance: 69, stress: 52, energy: 66 },
-];
 
 // ── Wellness indicator definitions ────────────────────────────────────────
 type IndicatorLevel = "low" | "moderate" | "good" | "strong";
@@ -389,13 +373,27 @@ export default function Dashboard() {
 
   const latestRecord = history[0] ?? null;
 
-  const dummyEmotions = mood === "sad"
-    ? [{ label: "sadness", score: 0.82 }, { label: "disappointment", score: 0.18 }]
-    : mood === "neutral"
-    ? [{ label: "nervousness", score: 0.35 }, { label: "neutral", score: 0.65 }]
-    : [{ label: "joy", score: 0.85 }, { label: "excitement", score: 0.15 }];
-
-  const recommendation = getRecommendations(dummyEmotions);
+  // Build REAL 7-day trend from Supabase history (only shown if user has data)
+  const hasTrendData = history.length >= 2;
+  const trendData = hasTrendData ? (() => {
+    const now = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(now);
+      day.setDate(now.getDate() - (6 - i));
+      const dayStr = day.toLocaleDateString("en-US", { weekday: "short" });
+      const dayCheckins = history.filter(c => {
+        const t = new Date(c.timestamp);
+        return t.toDateString() === day.toDateString();
+      });
+      const balance = dayCheckins.length
+        ? Math.round(dayCheckins.reduce((s, c) => s + c.emotional_balance, 0) / dayCheckins.length)
+        : null;
+      const stress = dayCheckins.length
+        ? Math.round(dayCheckins.reduce((s, c) => s + c.stress_score, 0) / dayCheckins.length)
+        : null;
+      return { day: dayStr, balance, stress, hasData: dayCheckins.length > 0 };
+    }).filter(d => d.hasData);
+  })() : [];
 
   // Adaptive trend data — shift values based on mood
   const trendData = TREND_DATA.map((d, i) => ({
@@ -578,7 +576,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Trend chart + mood timeline ──────────────────────────── */}
+        {/* ── Trend chart — only shown when user has real history ──── */}
+        {hasTrendData && (
         <div className="grid md:grid-cols-3 gap-5 mb-8">
 
           {/* Area chart */}
@@ -598,7 +597,7 @@ export default function Dashboard() {
               7-Day Emotional Wellness Trend
             </h2>
             <p className="text-xs text-muted-foreground mb-5">
-              Emotional balance, stress, and energy patterns over the past week
+              Your real emotional balance & stress patterns from past sessions
             </p>
             <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={trendData}>

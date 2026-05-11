@@ -1,5 +1,5 @@
-/**
- * Landing Page — MindEase AI / MANAS
+﻿/**
+ * Landing Page — MANAS / MANAS
  * Full-screen hero using the MANAS watercolor image.
  * "Get Started" → /login
  */
@@ -56,25 +56,24 @@ export default function Landing() {
         />
       </div>
 
-      {/* ── Content ──────────────────────────────────────────── */}
+      {/* ── Content — pushed to bottom so MANAS text in image is visible ── */}
       <div
         style={{
-          position: "relative",
+          position: "fixed",
+          bottom: "8vh",
+          left: 0,
+          right: 0,
           zIndex: 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "flex-start",
-          paddingTop: "3.5rem",
-          width: "100%",
-          maxWidth: 700,
-          padding: "3.5rem 2rem 2rem",
           textAlign: "center",
+          padding: "0 2rem",
         }}
       >
         {/* Badge */}
         <motion.div
-          initial={{ opacity: 0, y: -12 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
           style={{
@@ -89,7 +88,7 @@ export default function Landing() {
             fontSize: "0.75rem",
             fontWeight: 600,
             color: "#7c5c4a",
-            marginBottom: "1.5rem",
+            marginBottom: "1.25rem",
             boxShadow: "0 2px 12px rgba(180,120,80,0.12)",
           }}
         >
@@ -101,8 +100,7 @@ export default function Landing() {
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.5, duration: 0.7, ease: EASE }}
-          style={{ marginTop: "1rem" }}
+          transition={{ delay: 0.4, duration: 0.7, ease: EASE }}
         >
           <motion.button
             onClick={() => navigate("/login")}
@@ -130,13 +128,13 @@ export default function Landing() {
           </motion.button>
         </motion.div>
 
-        {/* Tagline below button */}
+        {/* Tagline */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 0.7 }}
           style={{
-            marginTop: "1rem",
+            marginTop: "0.85rem",
             fontSize: "0.78rem",
             color: "rgba(100,70,50,0.65)",
             fontWeight: 500,

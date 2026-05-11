@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,7 +15,7 @@ interface Message {
 }
 
 const INITIAL_MESSAGES: Message[] = [
-  { id: "1", role: "ai", text: "Hello, I'm MindEase AI. I'm really glad you're here. How are you doing today?", ts: Date.now() - 120000 },
+  { id: "1", role: "ai", text: "Hello, I'm MANAS. I'm really glad you're here. How are you doing today?", ts: Date.now() - 120000 },
   { id: "2", role: "user", text: "I've been feeling pretty stressed lately with work and everything.", ts: Date.now() - 90000 },
   { id: "3", role: "ai", text: "I hear you — that kind of sustained stress can feel heavy. Can you tell me a bit more about what's been weighing on you most? Work deadlines, people, or something else?", ts: Date.now() - 60000 },
   { id: "4", role: "user", text: "Mostly deadlines. I can't seem to switch off even at night.", ts: Date.now() - 30000 },
@@ -165,7 +165,7 @@ export default function Chat() {
                 <Brain size={18} className="text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold">MindEase AI</p>
+                <p className="text-sm font-semibold">MANAS</p>
                 <p className="text-xs text-muted-foreground">Your wellness companion</p>
               </div>
               <div className="w-2 h-2 rounded-full bg-green-400 ml-1 animate-pulse" />

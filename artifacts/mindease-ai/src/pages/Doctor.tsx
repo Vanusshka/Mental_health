@@ -142,7 +142,7 @@ export default function Doctor() {
             </div>
             <div>
               <h1 style={{fontSize:"1.2rem",fontWeight:800,color:"#0f172a"}}>Doctor / Therapist Portal</h1>
-              <p style={{fontSize:"0.78rem",color:"#6b7280"}}>MindEase AI · {doctorName}</p>
+              <p style={{fontSize:"0.78rem",color:"#6b7280"}}>MANAS · {doctorName}</p>
             </div>
           </div>
           <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>

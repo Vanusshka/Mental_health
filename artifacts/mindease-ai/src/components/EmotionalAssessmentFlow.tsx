@@ -1,4 +1,4 @@
-/**
+﻿/**
  * EmotionalAssessmentFlow
  * ─────────────────────────────────────────────────────────────────────────
  * Top-level orchestrator for the emotionally adaptive wellness experience.
@@ -139,7 +139,7 @@ export default function EmotionalAssessmentFlow() {
           session_number: sessionNum,
         });
       } catch (err) {
-        console.warn("[MindEase] Supabase save failed:", err);
+        console.warn("[MANAS] Supabase save failed:", err);
       }
     }
   }

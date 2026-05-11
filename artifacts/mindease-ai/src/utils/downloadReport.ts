@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PDF Report Generator — uses browser print API (no extra deps)
  * Generates a styled HTML report and triggers print-to-PDF.
  */
@@ -72,13 +72,13 @@ const BASE_STYLE = `
 
 export function downloadUserReport(data: UserReportData) {
   const moodColor = data.mood === "happy" ? "#10b981" : data.mood === "sad" ? "#6366f1" : "#0ea5e9";
-  const html = `<!DOCTYPE html><html><head><title>MindEase AI — Wellness Report</title><style>${BASE_STYLE}</style></head><body>
+  const html = `<!DOCTYPE html><html><head><title>MANAS — Wellness Report</title><style>${BASE_STYLE}</style></head><body>
     <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
       <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#8b5cf6,#06b6d4);display:flex;align-items:center;justify-content:center;">
         <span style="color:white;font-size:1.4rem;">🧠</span>
       </div>
       <div>
-        <h1 style="margin:0;background:linear-gradient(135deg,#8b5cf6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">MindEase AI</h1>
+        <h1 style="margin:0;background:linear-gradient(135deg,#8b5cf6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">MANAS</h1>
         <p style="margin:0;font-size:0.82rem;color:#6b7280;">Personal Emotional Wellness Report</p>
       </div>
     </div>
@@ -98,9 +98,9 @@ export function downloadUserReport(data: UserReportData) {
     <h2>Personalised Wellness Insights</h2>
     <ul style="padding-left:1.2rem;">${data.insights.map(i => `<li style="margin-bottom:0.5rem;font-size:0.88rem;line-height:1.6;">${i}</li>`).join("")}</ul>
     <div class="note">✅ This report is for personal wellness reflection only. It is not a clinical diagnosis.</div>
-    <div class="disclaimer">MindEase AI · AI-assisted emotional wellness infrastructure · Not a medical diagnosis tool · ${data.date}</div>
+    <div class="disclaimer">MANAS · AI-assisted emotional wellness infrastructure · Not a medical diagnosis tool · ${data.date}</div>
   </body></html>`;
-  printHTML(html, "MindEase Wellness Report");
+  printHTML(html, "MANAS Wellness Report");
 }
 
 export function downloadPatientReport(data: PatientReportData) {
@@ -120,7 +120,7 @@ export function downloadPatientReport(data: PatientReportData) {
       </div>
       <div>
         <h1 style="margin:0;color:#0f172a;">Patient Wellness Report</h1>
-        <p style="margin:0;font-size:0.82rem;color:#6b7280;">MindEase AI · Doctor Portal</p>
+        <p style="margin:0;font-size:0.82rem;color:#6b7280;">MANAS · Doctor Portal</p>
       </div>
     </div>
     <p style="color:#6b7280;font-size:0.85rem;">Doctor: <strong>${data.doctorName}</strong> &nbsp;|&nbsp; Date: ${data.date}</p>
@@ -136,7 +136,7 @@ export function downloadPatientReport(data: PatientReportData) {
     <h2>Doctor Notes</h2>
     <p style="background:#f8fafc;border-radius:10px;padding:1rem;font-size:0.88rem;line-height:1.7;">${data.notes || "No notes recorded."}</p>
     <div class="note">⚕️ This report is generated from emotional wellness assessments. Not a clinical psychiatric diagnosis.</div>
-    <div class="disclaimer">MindEase AI · Doctor Portal · ${data.date}</div>
+    <div class="disclaimer">MANAS · Doctor Portal · ${data.date}</div>
   </body></html>`;
   printHTML(html, `Patient Report — ${data.patientName}`);
 }
@@ -149,7 +149,7 @@ export function downloadOrgReport(data: OrgReportData) {
       </div>
       <div>
         <h1 style="margin:0;color:#0f172a;">Community Wellness Report</h1>
-        <p style="margin:0;font-size:0.82rem;color:#6b7280;">MindEase AI · Organization Portal</p>
+        <p style="margin:0;font-size:0.82rem;color:#6b7280;">MANAS · Organization Portal</p>
       </div>
     </div>
     <p style="color:#6b7280;font-size:0.85rem;">Organization: <strong>${data.orgName}</strong> &nbsp;|&nbsp; ${data.date}</p>
@@ -165,7 +165,7 @@ export function downloadOrgReport(data: OrgReportData) {
     <h2>AI Impact Summary</h2>
     <p style="background:#f0fdf4;border-radius:10px;padding:1rem;font-size:0.88rem;line-height:1.7;border:1px solid #bbf7d0;">${data.insights}</p>
     <div class="note">🔒 All data is anonymized. No individual personal information is included in this report.</div>
-    <div class="disclaimer">MindEase AI · Organization Portal · Anonymized Community Data · ${data.date}</div>
+    <div class="disclaimer">MANAS · Organization Portal · Anonymized Community Data · ${data.date}</div>
   </body></html>`;
   printHTML(html, "Organization Wellness Report");
 }

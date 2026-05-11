@@ -1,5 +1,5 @@
 ﻿/**
- * Login Page — MindEase AI
+ * Login Page — MANAS
  * Dropdown role selector + credentials form → redirect to portal
  * Blends with the warm watercolor MANAS aesthetic
  */
@@ -21,9 +21,9 @@ const ROLES = [
 
 // Demo credentials (any input works — just needs to be non-empty)
 const DEMO_HINT: Record<string, string> = {
-  user:   "demo@mindease.ai",
-  doctor: "doctor@mindease.ai",
-  org:    "org@mindease.ai",
+  user:   "demo@MANAS.ai",
+  doctor: "doctor@MANAS.ai",
+  org:    "org@MANAS.ai",
 };
 
 export default function Login() {
@@ -115,7 +115,7 @@ export default function Login() {
             <Brain size={22} color="white" />
           </div>
           <div>
-            <p style={{ fontSize: "1.1rem", fontWeight: 800, color: "#5c3d2e", letterSpacing: "-0.02em" }}>MindEase AI</p>
+            <p style={{ fontSize: "1.1rem", fontWeight: 800, color: "#5c3d2e", letterSpacing: "-0.02em" }}>MANAS</p>
             <p style={{ fontSize: "0.72rem", color: "#9c7a6a" }}>Emotional Wellness Platform</p>
           </div>
         </motion.div>

@@ -19,7 +19,7 @@ function CreateWorkshopModal({ onCreated, onClose, orgId }) {
   async function submit() {
     if (!form.workshop_name) return;
     setLoading(true);
-    const w = await createWorkshop({ ...form, organization_id: orgId, organization_name: "MindEase Org" });
+    const w = await createWorkshop({ ...form, organization_id: orgId, organization_name: "MANAS Org" });
     setLoading(false);
     if (w) onCreated(w);
     else alert("Could not create workshop. Check Supabase connection.");
@@ -176,7 +176,7 @@ export default function OrgPortal() {
             </div>
             <div>
               <h1 style={{ fontSize: "1.2rem", fontWeight: 800 }}>Organization / NGO Portal</h1>
-              <p style={{ fontSize: "0.78rem", color: "#6b7280" }}>MindEase AI · Real-time Community Wellness Analytics</p>
+              <p style={{ fontSize: "0.78rem", color: "#6b7280" }}>MANAS · Real-time Community Wellness Analytics</p>
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
