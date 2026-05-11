@@ -21,11 +21,11 @@ const MOOD_VIDEOS: Record<string, string> = {
   sad:     "/sad.mp4",
 };
 
-// Overlay opacity per mood — keeps UI readable while video is visible
+// Overlay opacity per mood — lighter so video breathes through more
 const OVERLAY_OPACITY: Record<string, number> = {
-  happy:   0.45,
-  neutral: 0.50,
-  sad:     0.48,
+  happy:   0.28,
+  neutral: 0.30,
+  sad:     0.28,
 };
 
 // Overlay tint per mood
@@ -83,6 +83,7 @@ function VideoLayer({ src, opacity }: { src: string; opacity: number }) {
       loop
       muted
       playsInline
+      preload="auto"
       style={{
         position: "absolute",
         inset: 0,
@@ -90,7 +91,9 @@ function VideoLayer({ src, opacity }: { src: string; opacity: number }) {
         height: "100%",
         objectFit: "cover",
         opacity,
+        filter: "brightness(1.15) saturate(1.1)",
         willChange: "opacity",
+        transform: "translateZ(0)", // GPU layer — prevents flicker
       }}
     />
   );
@@ -146,10 +149,10 @@ export default function MoodBackground() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.2, ease: "easeInOut" }}
+            transition={{ duration: 2.0, ease: "easeInOut" }}
             style={{ position: "absolute", inset: 0 }}
           >
-            <VideoLayer src={videoSrc} opacity={0.55} />
+            <VideoLayer src={videoSrc} opacity={0.78} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -157,7 +160,7 @@ export default function MoodBackground() {
       {/* ── Mood-tinted overlay for readability ────────────────── */}
       <motion.div
         animate={{ background: overlayColor }}
-        transition={{ duration: 1.4, ease: "easeInOut" }}
+        transition={{ duration: 2.2, ease: "easeInOut" }}
         style={{ position: "absolute", inset: 0 }}
       />
 
@@ -171,7 +174,7 @@ export default function MoodBackground() {
           left: "-15%",
           borderRadius: "50%",
           filter: "blur(80px)",
-          opacity: 0.22,
+          opacity: 0.12,
           pointerEvents: "none",
         }}
         animate={{
@@ -192,7 +195,7 @@ export default function MoodBackground() {
           right: "-10%",
           borderRadius: "50%",
           filter: "blur(80px)",
-          opacity: 0.20,
+          opacity: 0.10,
           pointerEvents: "none",
         }}
         animate={{
