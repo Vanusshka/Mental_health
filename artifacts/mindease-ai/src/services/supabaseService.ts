@@ -353,6 +353,61 @@ export async function getNextSessionNumber(patientId: string): Promise<number> {
   return (count ?? 0) + 1;
 }
 
+// ── Patient Sessions ──────────────────────────────────────────────────────
+
+export interface SavePatientSessionInput {
+  patient_id: string;
+  doctor_id: string;
+  session_number: number;
+  mood: "happy" | "neutral" | "sad";
+  stress_score: number;
+  wellness_score: number;
+  emotional_summary?: string;
+  ai_analysis?: string;
+  dominant_emotion?: string;
+  assessment_level: "elevated" | "moderate" | "positive";
+  reflection?: string;
+  answers?: { question: string; answer: string }[];
+}
+
+export async function savePatientSession(input: SavePatientSessionInput): Promise<string | null> {
+  if (!isSupabaseConfigured) {
+    console.warn("[Supabase] Not configured — patient session not saved");
+    return null;
+  }
+  const { data, error } = await (supabase
+    .from("patient_sessions") as any)
+    .insert({
+      patient_id:        input.patient_id,
+      doctor_id:         input.doctor_id,
+      session_number:    input.session_number,
+      mood:              input.mood,
+      stress_score:      input.stress_score,
+      wellness_score:    input.wellness_score,
+      emotional_summary: input.emotional_summary ?? null,
+      ai_analysis:       input.ai_analysis ?? null,
+      dominant_emotion:  input.dominant_emotion ?? null,
+      assessment_level:  input.assessment_level,
+      reflection:        input.reflection ?? null,
+      answers:           input.answers ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) { console.error("[Supabase] savePatientSession:", error.message); return null; }
+  return (data as { id: string } | null)?.id ?? null;
+}
+
+export async function getPatientSessions(patientId: string): Promise<import("@/lib/database.types").PatientSession[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await (supabase
+    .from("patient_sessions") as any)
+    .select("*")
+    .eq("patient_id", patientId)
+    .order("session_number", { ascending: true });
+  if (error) { console.error("[Supabase] getPatientSessions:", error.message); return []; }
+  return (data ?? []) as import("@/lib/database.types").PatientSession[];
+}
+
 // ── Doctor Portal — Patient Summaries ────────────────────────────────────
 
 export interface PatientSummary {

@@ -98,3 +98,27 @@ drop trigger if exists trg_update_checkin_count on workshop_participants;
 create trigger trg_update_checkin_count
 after insert on workshop_participants
 for each row execute function update_workshop_checkin_count();
+
+-- ── patient_sessions ─────────────────────────────────────────────
+create table if not exists patient_sessions (
+  id                uuid primary key default gen_random_uuid(),
+  patient_id        uuid not null references patients(id) on delete cascade,
+  doctor_id         text not null,
+  session_number    integer not null,
+  mood              text not null check (mood in ('happy','neutral','sad')),
+  stress_score      integer not null default 5,
+  wellness_score    integer not null default 60,
+  emotional_summary text,
+  ai_analysis       text,
+  dominant_emotion  text,
+  assessment_level  text not null default 'moderate' check (assessment_level in ('elevated','moderate','positive')),
+  reflection        text,
+  answers           jsonb,
+  created_at        timestamptz not null default now()
+);
+
+create index if not exists idx_sessions_patient on patient_sessions(patient_id);
+create index if not exists idx_sessions_doctor  on patient_sessions(doctor_id);
+
+alter table patient_sessions enable row level security;
+create policy "allow_all_sessions" on patient_sessions for all using (true) with check (true);

@@ -72,6 +72,26 @@ export interface Database {
         Insert: Omit<Database["public"]["Tables"]["patients"]["Row"], "id" | "created_at"> & { id?: string; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["patients"]["Row"]>;
       };
+      patient_sessions: {
+        Row: {
+          id: string;
+          patient_id: string;
+          doctor_id: string;
+          session_number: number;
+          mood: "happy" | "neutral" | "sad";
+          stress_score: number;
+          wellness_score: number;
+          emotional_summary: string | null;
+          ai_analysis: string | null;
+          dominant_emotion: string | null;
+          assessment_level: "elevated" | "moderate" | "positive";
+          reflection: string | null;
+          answers: { question: string; answer: string }[] | null;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["patient_sessions"]["Row"], "id" | "created_at"> & { id?: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["patient_sessions"]["Row"]>;
+      };
     };
   };
 }
@@ -80,3 +100,4 @@ export type EmotionalCheckin    = Database["public"]["Tables"]["emotional_checki
 export type Workshop            = Database["public"]["Tables"]["workshops"]["Row"];
 export type WorkshopParticipant = Database["public"]["Tables"]["workshop_participants"]["Row"];
 export type Patient             = Database["public"]["Tables"]["patients"]["Row"];
+export type PatientSession      = Database["public"]["Tables"]["patient_sessions"]["Row"];

@@ -2,10 +2,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { Brain, Plus, X, TrendingUp, TrendingDown, AlertTriangle, FileText, Activity, Heart, ChevronRight, Home, Download, RefreshCw } from "lucide-react";
-import { getPatientsByDoctor, getCheckinsByPatient, createPatient, updatePatientNotes, getAllPatientSummaries } from "@/services/supabaseService";
-import type { Patient, EmotionalCheckin } from "@/lib/database.types";
+import { Brain, Plus, X, TrendingUp, TrendingDown, AlertTriangle, FileText, Activity, Heart, ChevronRight, Home, Download, RefreshCw, Stethoscope, Clock } from "lucide-react";
+import { getPatientsByDoctor, getCheckinsByPatient, createPatient, updatePatientNotes, getPatientSessions } from "@/services/supabaseService";
+import type { Patient, EmotionalCheckin, PatientSession } from "@/lib/database.types";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePatientSession } from "@/contexts/PatientSessionContext";
 import { downloadPatientReport } from "@/utils/downloadReport";
 
 const TREND_COLOR = { improving:"#10b981", stable:"#06b6d4", declining:"#f87171", critical:"#ef4444" };
@@ -72,12 +73,14 @@ function AddPatientModal({ onAdd, onClose, doctorId }: {
 export default function Doctor() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const { setActiveSession } = usePatientSession();
   const doctorId = user?.id ?? "demo-doctor";
   const doctorName = user?.display_name ?? "Dr. User";
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selected, setSelected] = useState<Patient | null>(null);
   const [checkins, setCheckins] = useState<EmotionalCheckin[]>([]);
+  const [sessions, setSessions] = useState<PatientSession[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [tab, setTab] = useState("overview");
@@ -96,6 +99,7 @@ export default function Doctor() {
   useEffect(() => {
     if (!selected) return;
     getCheckinsByPatient(selected.id).then(setCheckins);
+    getPatientSessions(selected.id).then(setSessions);
   }, [selected]);
 
   function onPatientAdded(p: Patient) {
@@ -109,6 +113,19 @@ export default function Doctor() {
     setPatients(prev => prev.map(p => p.id === selected.id ? {...p, notes: noteText} : p));
     setSelected(prev => prev ? {...prev, notes: noteText} : prev);
     setNoteText("");
+  }
+
+  function startAssessment() {
+    if (!selected) return;
+    // Set context so assessment knows it's doctor-initiated
+    setActiveSession({
+      patient_id:     selected.id,
+      patient_name:   selected.name,
+      doctor_id:      doctorId,
+      doctor_name:    doctorName,
+      session_number: checkins.length + 1,
+    });
+    navigate(`/checkin?patient_id=${selected.id}&doctor_id=${doctorId}`);
   }
 
   const trend = selected ? computeTrend(checkins) : "stable";
@@ -231,18 +248,18 @@ export default function Doctor() {
                   <span style={{display:"flex",alignItems:"center",gap:"0.3rem",fontSize:"0.75rem",fontWeight:700,padding:"4px 10px",borderRadius:20,background:tColor+"18",color:tColor,border:`1px solid ${tColor}30`}}>
                     <TIcon size={11} /> {trend}
                   </span>
-                  {/* Start Diagnosis button */}
+                  {/* Start Assessment button — uses PatientSessionContext */}
                   <button
-                    onClick={() => navigate(`/checkin?patient_id=${selected.id}&doctor_id=${doctorId}`)}
+                    onClick={startAssessment}
                     style={{display:"flex",alignItems:"center",gap:"0.4rem",padding:"5px 14px",borderRadius:20,background:"linear-gradient(135deg,#8b5cf6,#6366f1)",color:"white",border:"none",fontWeight:700,cursor:"pointer",fontSize:"0.78rem",boxShadow:"0 3px 12px rgba(139,92,246,0.3)"}}>
-                    🧠 Start Diagnosis
+                    🧠 Start Assessment
                   </button>
                 </div>
               </div>
 
               {/* Tabs */}
               <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
-                {["overview","chart","notes","report"].map(t=>(
+                {["overview","timeline","chart","notes","report"].map(t=>(
                   <button key={t} onClick={()=>setTab(t)} style={tabStyle(t)}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
                 ))}
               </div>
@@ -270,6 +287,64 @@ export default function Doctor() {
                   })}
                 </div>
                 )
+              )}
+
+              {/* Timeline — session history with AI summaries */}
+              {tab==="timeline" && (
+                <div style={{background:"rgba(255,255,255,0.8)",backdropFilter:"blur(20px)",borderRadius:20,padding:"1.25rem",border:"1px solid rgba(255,255,255,0.6)"}}>
+                  <p style={{fontWeight:700,fontSize:"0.9rem",marginBottom:"0.25rem",display:"flex",alignItems:"center",gap:"0.4rem"}}><Clock size={15} color="#8b5cf6" /> Session Timeline</p>
+                  <p style={{fontSize:"0.75rem",color:"#6b7280",marginBottom:"1rem"}}>Complete emotional assessment history for {selected.name}</p>
+                  {sessions.length === 0 ? (
+                    <div style={{textAlign:"center",padding:"2rem",color:"#6b7280",fontSize:"0.85rem"}}>
+                      No sessions recorded yet. Click <strong>Start Assessment</strong> to begin Session 1.
+                    </div>
+                  ) : (
+                    <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
+                      {sessions.map((s, i) => {
+                        const moodEmoji = s.mood === "happy" ? "😊" : s.mood === "sad" ? "😔" : "😐";
+                        const levelColor = s.assessment_level === "elevated" ? "#f87171" : s.assessment_level === "moderate" ? "#fb923c" : "#10b981";
+                        const wColor = s.wellness_score >= 65 ? "#10b981" : s.wellness_score >= 45 ? "#fb923c" : "#f87171";
+                        const dateStr = new Date(s.created_at).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
+                        return (
+                          <motion.div key={s.id} initial={{opacity:0,x:-12}} animate={{opacity:1,x:0}} transition={{delay:i*0.06}}
+                            style={{borderRadius:14,padding:"1rem",background:"rgba(0,0,0,0.025)",border:`1px solid ${levelColor}25`,position:"relative",overflow:"hidden"}}>
+                            {/* Session number badge */}
+                            <div style={{position:"absolute",top:0,right:0,background:`linear-gradient(135deg,#8b5cf6,#6366f1)`,color:"white",fontSize:"0.65rem",fontWeight:800,padding:"3px 10px",borderRadius:"0 14px 0 10px"}}>
+                              Session {s.session_number}
+                            </div>
+                            <div style={{display:"flex",alignItems:"flex-start",gap:"0.75rem"}}>
+                              <span style={{fontSize:"1.6rem",flexShrink:0}}>{moodEmoji}</span>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{display:"flex",alignItems:"center",gap:"0.5rem",flexWrap:"wrap",marginBottom:"0.4rem"}}>
+                                  <span style={{fontSize:"0.8rem",fontWeight:700,color:"#111827",textTransform:"capitalize"}}>{s.dominant_emotion ?? s.mood}</span>
+                                  <span style={{fontSize:"0.68rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:levelColor+"18",color:levelColor,border:`1px solid ${levelColor}30`}}>{s.assessment_level}</span>
+                                  <span style={{fontSize:"0.68rem",fontWeight:800,color:wColor}}>Wellness: {s.wellness_score}/100</span>
+                                  <span style={{fontSize:"0.68rem",color:"#9ca3af",marginLeft:"auto"}}>{dateStr}</span>
+                                </div>
+                                {/* AI Analysis */}
+                                {s.ai_analysis && (
+                                  <div style={{background:"rgba(139,92,246,0.06)",borderRadius:10,padding:"0.6rem 0.75rem",marginBottom:"0.4rem",border:"1px solid rgba(139,92,246,0.12)"}}>
+                                    <p style={{fontSize:"0.72rem",color:"#374151",lineHeight:1.6}}>
+                                      <span style={{fontWeight:700,color:"#8b5cf6"}}>🧠 AI Analysis: </span>{s.ai_analysis}
+                                    </p>
+                                  </div>
+                                )}
+                                {/* Stress bar */}
+                                <div style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                                  <span style={{fontSize:"0.68rem",color:"#6b7280",flexShrink:0}}>Stress {s.stress_score}%</span>
+                                  <div style={{flex:1,height:4,borderRadius:4,background:"#f3f4f6",overflow:"hidden"}}>
+                                    <motion.div initial={{width:0}} animate={{width:`${s.stress_score}%`}} transition={{duration:0.7,delay:i*0.06}}
+                                      style={{height:"100%",background:s.stress_score>65?"#f87171":s.stress_score>40?"#fb923c":"#10b981",borderRadius:4}} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Chart */}

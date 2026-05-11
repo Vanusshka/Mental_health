@@ -32,7 +32,8 @@ import AssessmentResultCard from "@/components/AssessmentResultCard";
 import { useMood } from "@/contexts/MoodContext";
 import type { MoodType } from "@/contexts/MoodContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { saveCheckin, getNextSessionNumber } from "@/services/supabaseService";
+import { usePatientSession } from "@/contexts/PatientSessionContext";
+import { saveCheckin, getNextSessionNumber, savePatientSession } from "@/services/supabaseService";
 import { computeAssessmentLevel } from "@/services/doctorRecommendationService";
 import type { EmotionResponse } from "@/services/emotionApi";
 
@@ -78,12 +79,14 @@ export default function EmotionalAssessmentFlow() {
   const [answers, setAnswers]           = useState<{ question: string; answer: string }[]>([]);
   const { mood } = useMood();
   const { user } = useAuth();
+  const { activeSession } = usePatientSession();
 
-  // Read patient_id and doctor_id from URL query params (set by Doctor portal)
+  // Read patient_id and doctor_id from URL query params OR from PatientSessionContext
   const search = useSearch();
   const params = new URLSearchParams(search);
-  const patientId = params.get("patient_id") ?? undefined;
-  const doctorId  = params.get("doctor_id") ?? undefined;
+  const patientId = params.get("patient_id") ?? activeSession?.patient_id ?? undefined;
+  const doctorId  = params.get("doctor_id")  ?? activeSession?.doctor_id  ?? undefined;
+  const isDoctorFlow = !!(patientId && doctorId);
 
   // ── Stage routing ──────────────────────────────────────────────────────
   // IMPORTANT: routing uses `moodId` passed directly from MoodSelectionCard,
@@ -122,10 +125,18 @@ export default function EmotionalAssessmentFlow() {
     setAnswers(completedAnswers);
     setStage("result");
 
-    // Save to Supabase (non-blocking)
     if (emotionResult && mood) {
       try {
         const sessionNum = patientId ? await getNextSessionNumber(patientId) : undefined;
+        const dominant = emotionResult.emotions[0] ?? { label: "neutral", score: 0 };
+        const level = computeAssessmentLevel(emotionResult.emotions);
+        const indicators = mood === "happy"
+          ? { stress_score: 28, wellness_score: 78 }
+          : mood === "sad"
+          ? { stress_score: 74, wellness_score: 42 }
+          : { stress_score: 52, wellness_score: 63 };
+
+        // Save to emotional_checkins (general history)
         await saveCheckin({
           user_id:        user?.id,
           display_name:   user?.display_name ?? "Anonymous",
@@ -138,10 +149,44 @@ export default function EmotionalAssessmentFlow() {
           doctor_id:      doctorId,
           session_number: sessionNum,
         });
+
+        // Save to patient_sessions (doctor portal timeline) — only for doctor flows
+        if (isDoctorFlow && patientId && doctorId && sessionNum) {
+          const aiAnalysis = buildAiAnalysis(mood, dominant.label, indicators.stress_score, indicators.wellness_score, completedAnswers);
+          await savePatientSession({
+            patient_id:        patientId,
+            doctor_id:         doctorId,
+            session_number:    sessionNum,
+            mood:              mood as "happy" | "neutral" | "sad",
+            stress_score:      indicators.stress_score,
+            wellness_score:    indicators.wellness_score,
+            emotional_summary: `${dominant.label} (${Math.round(dominant.score * 100)}%)`,
+            ai_analysis:       aiAnalysis,
+            dominant_emotion:  dominant.label,
+            assessment_level:  level,
+            reflection,
+            answers:           completedAnswers,
+          });
+        }
       } catch (err) {
         console.warn("[MANAS] Supabase save failed:", err);
       }
     }
+  }
+
+  function buildAiAnalysis(
+    mood: string,
+    dominantEmotion: string,
+    stressScore: number,
+    wellnessScore: number,
+    answers: { question: string; answer: string }[]
+  ): string {
+    const answerSummary = answers.length > 0
+      ? answers.map(a => `Q: ${a.question} → A: ${a.answer}`).join("; ")
+      : "No questionnaire responses recorded.";
+    const trend = stressScore > 65 ? "elevated stress patterns" : stressScore > 40 ? "moderate stress levels" : "low stress levels";
+    const wellness = wellnessScore >= 65 ? "positive wellbeing" : wellnessScore >= 45 ? "moderate wellbeing" : "needs support";
+    return `Session mood: ${mood}. Dominant emotion: ${dominantEmotion}. Stress: ${stressScore}% (${trend}). Wellness: ${wellnessScore}/100 (${wellness}). Patient responses: ${answerSummary}`;
   }
 
   function handleReset() {

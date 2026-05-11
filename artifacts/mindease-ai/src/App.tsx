@@ -6,6 +6,7 @@ import { AnimatePresence } from "framer-motion";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { MoodProvider } from "@/contexts/MoodContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PatientSessionProvider } from "@/contexts/PatientSessionContext";
 import MoodBackground from "@/components/MoodBackground";
 import MusicPlayer from "@/components/MusicPlayer";
 import MouseGlow from "@/components/MouseGlow";
@@ -47,7 +48,8 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <MoodProvider>
+        <PatientSessionProvider>
+          <MoodProvider>
           <QueryClientProvider client={queryClient}>
             <TooltipProvider>
               <WouterRouter base="">
@@ -57,6 +59,7 @@ function App() {
             </TooltipProvider>
           </QueryClientProvider>
         </MoodProvider>
+        </PatientSessionProvider>
       </AuthProvider>
     </ThemeProvider>
   );
