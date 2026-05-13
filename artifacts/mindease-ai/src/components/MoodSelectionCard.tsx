@@ -106,7 +106,7 @@ export default function MoodSelectionCard({ onComplete }: MoodSelectionCardProps
     } catch (err) {
       setError(
         err instanceof Error && err.message.includes("fetch")
-          ? "Unable to reach the analysis server. Please ensure the backend is running on port 8000."
+          ? "Unable to reach the analysis server. Please try again later."
           : "Emotion analysis failed. Please try again."
       );
       setSelected(null);
