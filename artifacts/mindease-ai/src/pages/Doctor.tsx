@@ -102,6 +102,18 @@ export default function Doctor() {
     getPatientSessions(selected.id).then(setSessions);
   }, [selected]);
 
+  // Also refresh when tab becomes visible (user returns from assessment)
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible" && selected) {
+        getCheckinsByPatient(selected.id).then(setCheckins);
+        getPatientSessions(selected.id).then(setSessions);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [selected]);
+
   function onPatientAdded(p: Patient) {
     setPatients(prev => [p, ...prev]);
     setSelected(p);

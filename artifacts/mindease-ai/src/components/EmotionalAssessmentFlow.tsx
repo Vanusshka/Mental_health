@@ -1,26 +1,11 @@
 ﻿/**
- * EmotionalAssessmentFlow
- * ─────────────────────────────────────────────────────────────────────────
- * Top-level orchestrator for the emotionally adaptive wellness experience.
+ * EmotionalAssessmentFlow — with complete doctor-patient session persistence
  *
- * THREE DISTINCT PATHS — each emotionally appropriate:
- *
- *   HAPPY   → context-input → context-response  (celebratory, personalised)
- *   NEUTRAL → context-input → context-response  (supportive, personalised)
- *   SAD     → reflection → questionnaire → result → [doctor recommendations]
- *
- * Happy and neutral users:
- *   1. Are asked WHAT is behind their mood (ContextInputCard)
- *   2. Receive a Gemini-generated, context-specific response (ContextResponseCard)
- *   3. NEVER see questionnaires, assessments, or clinical flows
- *
- * Distressed users receive the full structured assessment flow.
- *
- * Routing uses the moodId passed directly from MoodSelectionCard —
- * never reads from useMood() context (which is async/stale at routing time).
+ * ALL mood paths (happy/neutral/sad) save sessions when doctor-initiated.
+ * Patient context is read from URL params + PatientSessionContext (refresh-safe).
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearch } from "wouter";
 import MoodSelectionCard from "@/components/MoodSelectionCard";
@@ -33,21 +18,18 @@ import { useMood } from "@/contexts/MoodContext";
 import type { MoodType } from "@/contexts/MoodContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePatientSession } from "@/contexts/PatientSessionContext";
-import { saveCheckin, getNextSessionNumber, savePatientSession } from "@/services/supabaseService";
+import { saveCheckin, savePatientSession } from "@/services/supabaseService";
 import { computeAssessmentLevel } from "@/services/doctorRecommendationService";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { EmotionResponse } from "@/services/emotionApi";
 
-// ── Stage types ────────────────────────────────────────────────────────────
-
 type Stage =
-  | "mood-select"       // Step 1 — always shown
-  | "context-input"     // Happy/Neutral: ask what is behind the mood
-  | "context-response"  // Happy/Neutral: show Gemini personalised response
-  | "reflection"        // Sad: deep reflection prompt
-  | "questionnaire"     // Sad: Gemini-generated questions
-  | "result";           // Sad: wellness summary + doctor recommendations
-
-// ── Stepper configs ────────────────────────────────────────────────────────
+  | "mood-select"
+  | "context-input"
+  | "context-response"
+  | "reflection"
+  | "questionnaire"
+  | "result";
 
 const POSITIVE_STEPS = [
   { key: "mood-select",      label: "Check-In"  },
@@ -64,51 +46,145 @@ const SAD_STEPS = [
 
 function getSteps(selectedMood: NonNullable<MoodType> | null) {
   if (selectedMood === "sad") return SAD_STEPS;
-  return POSITIVE_STEPS; // happy and neutral both use the 3-step positive path
+  return POSITIVE_STEPS;
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
+// ── Get next session number directly from Supabase ────────────────────────
+async function fetchNextSessionNumber(patientId: string): Promise<number> {
+  if (!isSupabaseConfigured) return 1;
+  try {
+    const { count } = await (supabase.from("patient_sessions") as any)
+      .select("*", { count: "exact", head: true })
+      .eq("patient_id", patientId);
+    return (count ?? 0) + 1;
+  } catch {
+    return 1;
+  }
+}
+
+// ── Build AI analysis string ───────────────────────────────────────────────
+function buildAiAnalysis(
+  mood: string, dominantEmotion: string,
+  stressScore: number, wellnessScore: number,
+  answers: { question: string; answer: string }[]
+): string {
+  const answerSummary = answers.length > 0
+    ? answers.slice(0, 3).map(a => `${a.question}: ${a.answer}`).join(" | ")
+    : "No questionnaire responses.";
+  const stressTrend = stressScore > 65 ? "elevated stress" : stressScore > 40 ? "moderate stress" : "low stress";
+  const wellnessTrend = wellnessScore >= 65 ? "positive wellbeing" : wellnessScore >= 45 ? "moderate wellbeing" : "needs support";
+  return `Mood: ${mood}. Dominant: ${dominantEmotion}. Stress: ${stressScore}% (${stressTrend}). Wellness: ${wellnessScore}/100 (${wellnessTrend}). ${answerSummary}`;
+}
+
+// ── Indicators by mood ─────────────────────────────────────────────────────
+function getIndicators(mood: string) {
+  if (mood === "happy")   return { stress_score: 28, wellness_score: 78 };
+  if (mood === "sad")     return { stress_score: 74, wellness_score: 42 };
+  return                         { stress_score: 52, wellness_score: 63 };
+}
 
 export default function EmotionalAssessmentFlow() {
-  const [stage, setStage]               = useState<Stage>("mood-select");
+  const [stage, setStage]             = useState<Stage>("mood-select");
   const [selectedMood, setSelectedMood] = useState<NonNullable<MoodType> | null>(null);
   const [emotionResult, setEmotionResult] = useState<EmotionResponse | null>(null);
-  const [userText, setUserText]         = useState("");
-  const [contextText, setContextText]   = useState("");
-  const [reflection, setReflection]     = useState("");
-  const [answers, setAnswers]           = useState<{ question: string; answer: string }[]>([]);
+  const [userText, setUserText]       = useState("");
+  const [contextText, setContextText] = useState("");
+  const [reflection, setReflection]   = useState("");
+  const [answers, setAnswers]         = useState<{ question: string; answer: string }[]>([]);
+  const sessionSaved = useRef(false); // prevent double-save
+
   const { mood } = useMood();
   const { user } = useAuth();
-  const { activeSession } = usePatientSession();
+  const { activeSession, clearSession } = usePatientSession();
 
-  // Read patient_id and doctor_id from URL query params OR from PatientSessionContext
+  // Patient context: URL params take priority, then sessionStorage context
   const search = useSearch();
   const params = new URLSearchParams(search);
   const patientId = params.get("patient_id") ?? activeSession?.patient_id ?? undefined;
   const doctorId  = params.get("doctor_id")  ?? activeSession?.doctor_id  ?? undefined;
   const isDoctorFlow = !!(patientId && doctorId);
 
-  // ── Stage routing ──────────────────────────────────────────────────────
-  // IMPORTANT: routing uses `moodId` passed directly from MoodSelectionCard,
-  // NOT from useMood() — React state updates are async and mood would be
-  // stale/null at this point in the render cycle.
+  // ── Core save function — called from ALL completion paths ──────────────
+  async function persistSession(
+    finalMood: string,
+    emotions: EmotionResponse["emotions"],
+    finalReflection: string,
+    finalAnswers: { question: string; answer: string }[]
+  ) {
+    if (sessionSaved.current) return; // prevent double-save
+    sessionSaved.current = true;
+
+    const dominant   = emotions[0] ?? { label: "neutral", score: 0 };
+    const level      = computeAssessmentLevel(emotions);
+    const indicators = getIndicators(finalMood);
+
+    console.log("[MANAS] Saving session — patientId:", patientId, "doctorId:", doctorId, "isDoctorFlow:", isDoctorFlow);
+
+    try {
+      // Always save to emotional_checkins
+      await saveCheckin({
+        user_id:        user?.id,
+        display_name:   user?.display_name ?? "Anonymous",
+        email:          user?.email ?? "",
+        mood:           finalMood as "happy" | "neutral" | "sad",
+        emotions,
+        reflection:     finalReflection,
+        answers:        finalAnswers,
+        patient_id:     patientId,
+        doctor_id:      doctorId,
+      });
+
+      // Save to patient_sessions for doctor portal — ALL moods
+      if (isDoctorFlow && patientId && doctorId) {
+        const sessionNum = await fetchNextSessionNumber(patientId);
+        const aiAnalysis = buildAiAnalysis(
+          finalMood, dominant.label,
+          indicators.stress_score, indicators.wellness_score,
+          finalAnswers
+        );
+
+        console.log("[MANAS] Saving patient_session — session:", sessionNum);
+
+        const result = await savePatientSession({
+          patient_id:        patientId,
+          doctor_id:         doctorId,
+          session_number:    sessionNum,
+          mood:              finalMood as "happy" | "neutral" | "sad",
+          stress_score:      indicators.stress_score,
+          wellness_score:    indicators.wellness_score,
+          emotional_summary: `${dominant.label} (${Math.round(dominant.score * 100)}%)`,
+          ai_analysis:       aiAnalysis,
+          dominant_emotion:  dominant.label,
+          assessment_level:  level,
+          reflection:        finalReflection,
+          answers:           finalAnswers,
+        });
+
+        console.log("[MANAS] patient_session saved:", result);
+      }
+    } catch (err) {
+      console.error("[MANAS] Session save error:", err);
+      sessionSaved.current = false; // allow retry
+    }
+  }
+
+  // ── Stage handlers ─────────────────────────────────────────────────────
 
   function handleMoodSelected(result: EmotionResponse, text: string, moodId: NonNullable<MoodType>) {
     setEmotionResult(result);
     setUserText(text);
     setSelectedMood(moodId);
-
-    if (moodId === "sad") {
-      setStage("reflection");
-    } else {
-      // happy and neutral → ask for context first
-      setStage("context-input");
-    }
+    sessionSaved.current = false; // reset for new assessment
+    setStage(moodId === "sad" ? "reflection" : "context-input");
   }
 
   function handleContextSubmitted(text: string) {
     setContextText(text);
     setStage("context-response");
+    // For doctor flows, save session when happy/neutral context is submitted
+    if (isDoctorFlow && emotionResult && selectedMood) {
+      persistSession(selectedMood, emotionResult.emotions, text, []);
+    }
   }
 
   function handleReflectionComplete(reflectionText: string) {
@@ -126,89 +202,41 @@ export default function EmotionalAssessmentFlow() {
     setStage("result");
 
     if (emotionResult && mood) {
-      try {
-        const sessionNum = patientId ? await getNextSessionNumber(patientId) : undefined;
-        const dominant = emotionResult.emotions[0] ?? { label: "neutral", score: 0 };
-        const level = computeAssessmentLevel(emotionResult.emotions);
-        const indicators = mood === "happy"
-          ? { stress_score: 28, wellness_score: 78 }
-          : mood === "sad"
-          ? { stress_score: 74, wellness_score: 42 }
-          : { stress_score: 52, wellness_score: 63 };
-
-        // Save to emotional_checkins (general history)
-        await saveCheckin({
-          user_id:        user?.id,
-          display_name:   user?.display_name ?? "Anonymous",
-          email:          user?.email ?? "",
-          mood:           mood as "happy" | "neutral" | "sad",
-          emotions:       emotionResult.emotions,
-          reflection,
-          answers:        completedAnswers,
-          patient_id:     patientId,
-          doctor_id:      doctorId,
-          session_number: sessionNum,
-        });
-
-        // Save to patient_sessions (doctor portal timeline) — only for doctor flows
-        if (isDoctorFlow && patientId && doctorId && sessionNum) {
-          const aiAnalysis = buildAiAnalysis(mood, dominant.label, indicators.stress_score, indicators.wellness_score, completedAnswers);
-          await savePatientSession({
-            patient_id:        patientId,
-            doctor_id:         doctorId,
-            session_number:    sessionNum,
-            mood:              mood as "happy" | "neutral" | "sad",
-            stress_score:      indicators.stress_score,
-            wellness_score:    indicators.wellness_score,
-            emotional_summary: `${dominant.label} (${Math.round(dominant.score * 100)}%)`,
-            ai_analysis:       aiAnalysis,
-            dominant_emotion:  dominant.label,
-            assessment_level:  level,
-            reflection,
-            answers:           completedAnswers,
-          });
-        }
-      } catch (err) {
-        console.warn("[MANAS] Supabase save failed:", err);
-      }
+      await persistSession(mood, emotionResult.emotions, reflection, completedAnswers);
     }
-  }
-
-  function buildAiAnalysis(
-    mood: string,
-    dominantEmotion: string,
-    stressScore: number,
-    wellnessScore: number,
-    answers: { question: string; answer: string }[]
-  ): string {
-    const answerSummary = answers.length > 0
-      ? answers.map(a => `Q: ${a.question} → A: ${a.answer}`).join("; ")
-      : "No questionnaire responses recorded.";
-    const trend = stressScore > 65 ? "elevated stress patterns" : stressScore > 40 ? "moderate stress levels" : "low stress levels";
-    const wellness = wellnessScore >= 65 ? "positive wellbeing" : wellnessScore >= 45 ? "moderate wellbeing" : "needs support";
-    return `Session mood: ${mood}. Dominant emotion: ${dominantEmotion}. Stress: ${stressScore}% (${trend}). Wellness: ${wellnessScore}/100 (${wellness}). Patient responses: ${answerSummary}`;
   }
 
   function handleReset() {
     setStage("mood-select");
     setSelectedMood(null);
     setEmotionResult(null);
-    setUserText("");
-    setContextText("");
-    setReflection("");
-    setAnswers([]);
+    setUserText(""); setContextText(""); setReflection(""); setAnswers([]);
+    sessionSaved.current = false;
   }
 
   // ── Stepper ────────────────────────────────────────────────────────────
 
   const steps = getSteps(selectedMood);
-  const stageOrder = steps.map((s) => s.key);
+  const stageOrder = steps.map(s => s.key);
   const currentIdx = stageOrder.indexOf(stage);
   const displayIdx = currentIdx < 0 ? 0 : currentIdx;
 
   return (
     <div className="w-full">
-      {/* ── Progress stepper ──────────────────────────────────────── */}
+      {/* Doctor session banner */}
+      {isDoctorFlow && activeSession && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs font-medium"
+          style={{ background: "rgba(14,165,233,0.08)", border: "1px solid rgba(14,165,233,0.2)", color: "#0ea5e9" }}
+        >
+          🩺 Doctor-assisted session for <strong className="ml-1">{activeSession.patient_name}</strong>
+          <span className="ml-auto opacity-60">Session #{activeSession.session_number}</span>
+        </motion.div>
+      )}
+
+      {/* Progress stepper */}
       <div className="flex items-center justify-center gap-0 mb-10">
         {steps.map((step, i) => {
           const isDone   = i < displayIdx;
@@ -220,64 +248,44 @@ export default function EmotionalAssessmentFlow() {
                   className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold"
                   animate={{
                     background: isDone || isActive ? "hsl(var(--primary))" : "rgba(0,0,0,0.07)",
-                    color:      isDone || isActive ? "#fff"                 : "rgba(0,0,0,0.35)",
+                    color:      isDone || isActive ? "#fff" : "rgba(0,0,0,0.35)",
                     scale:      isActive ? 1.12 : 1,
                   }}
                   transition={{ duration: 0.4 }}
                 >
                   {isDone ? "✓" : i + 1}
                 </motion.div>
-                <span
-                  className="text-[10px] font-medium hidden sm:block transition-colors duration-300"
-                  style={{ color: isActive ? "hsl(var(--foreground))" : "rgba(0,0,0,0.35)" }}
-                >
+                <span className="text-[10px] font-medium hidden sm:block transition-colors duration-300"
+                  style={{ color: isActive ? "hsl(var(--foreground))" : "rgba(0,0,0,0.35)" }}>
                   {step.label}
                 </span>
               </div>
               {i < steps.length - 1 && (
-                <motion.div
-                  className="w-10 sm:w-16 h-px mx-1 mb-4 rounded-full"
+                <motion.div className="w-10 sm:w-16 h-px mx-1 mb-4 rounded-full"
                   animate={{ background: i < displayIdx ? "hsl(var(--primary))" : "rgba(0,0,0,0.1)" }}
-                  transition={{ duration: 0.5 }}
-                />
+                  transition={{ duration: 0.5 }} />
               )}
             </div>
           );
         })}
       </div>
 
-      {/* ── Stage content ─────────────────────────────────────────── */}
+      {/* Stage content */}
       <AnimatePresence mode="wait">
-
-        {/* Step 1: Mood selection — all paths */}
         {stage === "mood-select" && (
-          <motion.div key="mood-select"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <motion.div key="mood-select" initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-20 }} transition={{ duration:0.35, ease:[0.22,1,0.36,1] }}>
             <MoodSelectionCard onComplete={handleMoodSelected} />
           </motion.div>
         )}
 
-        {/* Happy/Neutral Step 2: Ask for context */}
         {stage === "context-input" && selectedMood && selectedMood !== "sad" && (
-          <motion.div key="context-input"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <ContextInputCard
-              mood={selectedMood}
-              onComplete={handleContextSubmitted}
-            />
+          <motion.div key="context-input" initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-20 }} transition={{ duration:0.35, ease:[0.22,1,0.36,1] }}>
+            <ContextInputCard mood={selectedMood} onComplete={handleContextSubmitted} />
           </motion.div>
         )}
 
-        {/* Happy/Neutral Step 3: Gemini personalised response */}
         {stage === "context-response" && selectedMood && selectedMood !== "sad" && (
-          <motion.div key="context-response"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <motion.div key="context-response" initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-20 }} transition={{ duration:0.35, ease:[0.22,1,0.36,1] }}>
             <ContextResponseCard
               mood={selectedMood}
               contextText={contextText}
@@ -286,12 +294,8 @@ export default function EmotionalAssessmentFlow() {
           </motion.div>
         )}
 
-        {/* Sad Step 2: Reflection */}
         {stage === "reflection" && emotionResult && (
-          <motion.div key="reflection"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <motion.div key="reflection" initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-20 }} transition={{ duration:0.35, ease:[0.22,1,0.36,1] }}>
             <ReflectionInputCard
               dominantEmotion={emotionResult.emotions[0]?.label ?? "neutral"}
               mood={mood}
@@ -301,12 +305,8 @@ export default function EmotionalAssessmentFlow() {
           </motion.div>
         )}
 
-        {/* Sad Step 3: Questionnaire */}
         {stage === "questionnaire" && emotionResult && (
-          <motion.div key="questionnaire"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <motion.div key="questionnaire" initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-20 }} transition={{ duration:0.35, ease:[0.22,1,0.36,1] }}>
             <WellnessQuestionnaire
               userText={userText}
               reflection={reflection}
@@ -317,12 +317,8 @@ export default function EmotionalAssessmentFlow() {
           </motion.div>
         )}
 
-        {/* Sad Step 4: Result + doctor recommendations */}
         {stage === "result" && emotionResult && (
-          <motion.div key="result"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <motion.div key="result" initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-20 }} transition={{ duration:0.35, ease:[0.22,1,0.36,1] }}>
             <AssessmentResultCard
               emotions={emotionResult.emotions}
               answers={answers}
@@ -330,7 +326,6 @@ export default function EmotionalAssessmentFlow() {
             />
           </motion.div>
         )}
-
       </AnimatePresence>
     </div>
   );
