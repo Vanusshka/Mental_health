@@ -100,9 +100,11 @@ export default function EmotionalAssessmentFlow() {
   // Patient context: URL params take priority, then sessionStorage context
   const search = useSearch();
   const params = new URLSearchParams(search);
-  const patientId = params.get("patient_id") ?? activeSession?.patient_id ?? undefined;
-  const doctorId  = params.get("doctor_id")  ?? activeSession?.doctor_id  ?? undefined;
-  const isDoctorFlow = !!(patientId && doctorId);
+  const patientId  = params.get("patient_id")  ?? activeSession?.patient_id  ?? undefined;
+  const doctorId   = params.get("doctor_id")   ?? activeSession?.doctor_id   ?? undefined;
+  const workshopId = params.get("workshop_id") ?? undefined;
+  const isDoctorFlow   = !!(patientId && doctorId);
+  const isWorkshopFlow = !!workshopId;
 
   // ── Core save function — called from ALL completion paths ──────────────
   async function persistSession(
@@ -132,7 +134,15 @@ export default function EmotionalAssessmentFlow() {
         answers:        finalAnswers,
         patient_id:     patientId,
         doctor_id:      doctorId,
+        workshop_id:    workshopId,
       });
+
+      // Save workshop participant record
+      if (isWorkshopFlow && workshopId) {
+        const { addWorkshopParticipant } = await import("@/services/supabaseService");
+        await addWorkshopParticipant(workshopId, finalMood as "happy"|"neutral"|"sad", indicators.stress_score);
+        console.log("[MANAS] Workshop participant saved for workshop:", workshopId);
+      }
 
       // Save to patient_sessions for doctor portal — ALL moods
       if (isDoctorFlow && patientId && doctorId) {
@@ -223,6 +233,15 @@ export default function EmotionalAssessmentFlow() {
 
   return (
     <div className="w-full">
+      {/* Workshop session banner */}
+      {isWorkshopFlow && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="mb-6 rounded-xl px-4 py-2.5 flex items-center gap-2 text-xs font-medium"
+          style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981" }}>
+          🏢 Workshop emotional assessment — your results are anonymous
+        </motion.div>
+      )}
+
       {/* Doctor session banner */}
       {isDoctorFlow && activeSession && (
         <motion.div

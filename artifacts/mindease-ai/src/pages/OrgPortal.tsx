@@ -157,7 +157,12 @@ export default function OrgPortal() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    // Auto-refresh every 30 seconds for live analytics
+    const t = setInterval(loadData, 30000);
+    return () => clearInterval(t);
+  }, []);
 
   function onCreated(w: Workshop) {
     setWorkshops(prev => [w, ...prev]);
