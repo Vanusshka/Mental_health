@@ -636,3 +636,96 @@ a[class*="open-editor"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MANAS — Mobile Responsiveness
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Prevent horizontal overflow on all screens */
+html, body, #root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Landing page — ensure button visible on small screens */
+@media (max-width: 640px) {
+  /* Landing page button area */
+  [style*="bottom: 8vh"] {
+    bottom: 5vh !important;
+    padding: 0 1rem !important;
+  }
+
+  /* Login card */
+  [style*="maxWidth: 420"] {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 20px !important;
+  }
+
+  /* Doctor/Org portal grid → single column */
+  [style*="gridTemplateColumns: \"280px 1fr\""] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Mood selection cards → single column on very small screens */
+  .grid-cols-1.sm\\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Dashboard indicators → 2 columns on mobile */
+  .grid-cols-2.sm\\:grid-cols-3.lg\\:grid-cols-6 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Checkin container padding */
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+/* Video backgrounds — prevent cropping on mobile */
+video[style*="objectFit"] {
+  object-fit: cover !important;
+  object-position: center center !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Landing page image — no crop on mobile */
+@media (max-width: 768px) {
+  img[src*="landingpage"] {
+    object-position: center top !important;
+  }
+
+  /* Org portal stats grid */
+  [style*="repeat(auto-fit,minmax(180px"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Doctor portal tabs */
+  [style*="display:\"flex\",gap:\"0.5rem\",flexWrap:\"wrap\""] {
+    flex-wrap: wrap !important;
+  }
+
+  /* QR modal */
+  [style*="maxWidth: 560"] {
+    max-width: calc(100vw - 2rem) !important;
+  }
+}
+
+/* Ensure touch targets are large enough */
+@media (max-width: 768px) {
+  button {
+    min-height: 40px;
+  }
+
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* Fix viewport height on mobile browsers (address bar issue) */
+.min-h-screen {
+  min-height: 100dvh;
+}

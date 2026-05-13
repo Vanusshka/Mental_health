@@ -170,33 +170,42 @@ export interface CreateWorkshopInput {
 }
 
 export async function createWorkshop(input: CreateWorkshopInput): Promise<Workshop | null> {
-  if (!isSupabaseConfigured) {
-    return {
-      id: Math.random().toString(36).slice(2, 10).toUpperCase(),
-      workshop_name: input.workshop_name,
-      description: input.description ?? null,
-      organization_id: input.organization_id ?? null,
-      organization_name: input.organization_name ?? null,
-      date: input.date ?? null,
-      created_at: new Date().toISOString(),
-      checkin_count: 0,
-    };
+  // Always generate a local fallback first
+  const fallback: Workshop = {
+    id: crypto.randomUUID(),
+    workshop_name: input.workshop_name,
+    description: input.description ?? null,
+    organization_id: input.organization_id ?? null,
+    organization_name: input.organization_name ?? null,
+    date: input.date ?? null,
+    created_at: new Date().toISOString(),
+    checkin_count: 0,
+  };
+
+  if (!isSupabaseConfigured) return fallback;
+
+  try {
+    const { data, error } = await (supabase
+      .from("workshops") as any)
+      .insert({
+        workshop_name:     input.workshop_name,
+        description:       input.description ?? null,
+        organization_name: input.organization_name ?? null,
+        organization_id:   input.organization_id ?? null,
+        date:              input.date ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[Supabase] createWorkshop:", error.message);
+      return fallback; // return fallback so QR still generates
+    }
+    return data as Workshop;
+  } catch (e) {
+    console.error("[Supabase] createWorkshop exception:", e);
+    return fallback;
   }
-
-  const { data, error } = await (supabase
-    .from("workshops") as any)
-    .insert({
-      workshop_name:     input.workshop_name,
-      description:       input.description ?? null,
-      organization_name: input.organization_name ?? null,
-      organization_id:   input.organization_id ?? null,
-      date:              input.date ?? null,
-    })
-    .select()
-    .single();
-
-  if (error) { console.error("[Supabase] createWorkshop:", error.message); return null; }
-  return data as Workshop;
 }
 
 export async function getWorkshops(orgId?: string): Promise<Workshop[]> {
@@ -235,14 +244,18 @@ export async function addWorkshopParticipant(
   mood: "happy" | "neutral" | "sad",
   stressScore: number
 ): Promise<boolean> {
-  if (!isSupabaseConfigured) return true;
+  if (!isSupabaseConfigured) return true; // silent success in demo
 
-  const { error } = await (supabase
-    .from("workshop_participants") as any)
-    .insert({ workshop_id: workshopId, participant_mood: mood, stress_score: stressScore });
-
-  if (error) { console.error("[Supabase] addParticipant:", error.message); return false; }
-  return true;
+  try {
+    const { error } = await (supabase
+      .from("workshop_participants") as any)
+      .insert({ workshop_id: workshopId, participant_mood: mood, stress_score: stressScore });
+    if (error) { console.error("[Supabase] addParticipant:", error.message); return false; }
+    return true;
+  } catch (e) {
+    console.error("[Supabase] addParticipant exception:", e);
+    return false;
+  }
 }
 
 export interface WorkshopAnalytics {
@@ -351,6 +364,27 @@ export async function getNextSessionNumber(patientId: string): Promise<number> {
     .select("*", { count: "exact", head: true })
     .eq("patient_id", patientId);
   return (count ?? 0) + 1;
+}
+
+// ── Doctor Profile ────────────────────────────────────────────────────────
+
+export interface DoctorProfileInput {
+  id: string;
+  email: string;
+  full_name: string;
+  specialization: string | null;
+}
+
+export async function saveDoctorProfile(input: DoctorProfileInput): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  await (supabase.from("doctors") as any)
+    .upsert({ id: input.id, email: input.email, full_name: input.full_name, specialization: input.specialization }, { onConflict: "id" });
+}
+
+export async function getDoctorProfile(id: string): Promise<{ full_name: string; specialization: string | null } | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data } = await (supabase.from("doctors") as any).select("full_name, specialization").eq("id", id).single();
+  return data ?? null;
 }
 
 // ── Patient Sessions ──────────────────────────────────────────────────────

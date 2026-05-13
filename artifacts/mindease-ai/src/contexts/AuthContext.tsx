@@ -1,10 +1,10 @@
 /**
- * AuthContext — Supabase-ready session context
- * Reads/writes from localStorage session (no Firebase).
+ * AuthContext — session context with Supabase doctor profile persistence
  */
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { getSession, setSession, clearSession, type SessionUser, type UserRole } from "@/services/authService";
+import { saveDoctorProfile, getDoctorProfile } from "@/services/supabaseService";
 
 interface AuthContextType {
   user: SessionUser | null;
@@ -12,7 +12,7 @@ interface AuthContextType {
   isConfigured: boolean;
   role: UserRole | null;
   roleLoading: boolean;
-  login: (email: string, role: UserRole) => void;
+  login: (email: string, role: UserRole, fullName?: string, specialization?: string) => Promise<void>;
   logout: () => void;
   refreshRole: () => Promise<void>;
 }
@@ -20,37 +20,47 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null, loading: false, isConfigured: true,
   role: null, roleLoading: false,
-  login: () => {}, logout: () => {}, refreshRole: async () => {},
+  login: async () => {}, logout: () => {}, refreshRole: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser]   = useState<SessionUser | null>(null);
+  const [user, setUser]     = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const session = getSession();
-    if (session) setUser(session);
+    if (session) {
+      setUser(session);
+      // If doctor, try to load latest profile from Supabase to get real name
+      if (session.role === "doctor") {
+        getDoctorProfile(session.id).then(profile => {
+          if (profile && profile.full_name) {
+            const updated = { ...session, display_name: profile.full_name, specialization: profile.specialization ?? undefined };
+            setSession(updated);
+            setUser(updated);
+          }
+        }).catch(() => {});
+      }
+    }
     setLoading(false);
   }, []);
 
-  function login(email: string, role: UserRole) {
-    // Use email as stable ID so Supabase queries return same user's data on re-login
+  async function login(email: string, role: UserRole, fullName?: string, specialization?: string) {
     const stableId = btoa(email.toLowerCase().trim()).replace(/[^a-zA-Z0-9]/g, "").slice(0, 36);
-    const session: SessionUser = {
-      id:           stableId,
-      email,
-      display_name: email.split("@")[0],
-      role,
-    };
+    const displayName = fullName?.trim() || email.split("@")[0];
+    const session: SessionUser = { id: stableId, email, display_name: displayName, role, specialization };
     setSession(session);
     setUser(session);
+
+    // Persist doctor profile to Supabase
+    if (role === "doctor") {
+      try {
+        await saveDoctorProfile({ id: stableId, email, full_name: displayName, specialization: specialization ?? null });
+      } catch { /* non-blocking */ }
+    }
   }
 
-  function logout() {
-    clearSession();
-    setUser(null);
-  }
-
+  function logout() { clearSession(); setUser(null); }
   async function refreshRole() {}
 
   return (
@@ -64,6 +74,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export function useAuth() { return useContext(AuthContext); }

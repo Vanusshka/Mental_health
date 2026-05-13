@@ -1,7 +1,5 @@
 ﻿/**
- * Auth Service — Simple session auth (no Firebase)
- * Uses localStorage to persist role/session for demo.
- * Replace with Supabase Auth in production.
+ * Auth Service — Session auth with Supabase doctor profile persistence
  */
 
 export type UserRole = "user" | "doctor" | "org";
@@ -11,6 +9,7 @@ export interface SessionUser {
   email: string;
   display_name: string;
   role: UserRole;
+  specialization?: string;
 }
 
 const SESSION_KEY = "MANAS_session";
@@ -30,10 +29,6 @@ export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
 }
 
-export function isConfigured(): boolean {
-  return true; // always available
-}
+export function isConfigured(): boolean { return true; }
 
-export function signOut(): void {
-  clearSession();
-}
+export function signOut(): void { clearSession(); }

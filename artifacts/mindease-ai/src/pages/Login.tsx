@@ -24,22 +24,21 @@ const ROLES = [
 export default function Login() {
   const [, navigate] = useLocation();
   const { login } = useAuth();
-  const [role, setRole]           = useState("");
-  const [dropOpen, setDropOpen]   = useState(false);
-  const [email, setEmail]         = useState("");
-  const [password, setPassword]   = useState("");
-  const [showPass, setShowPass]   = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState("");
+  const [role, setRole]         = useState("");
+  const [dropOpen, setDropOpen] = useState(false);
+  const [email, setEmail]       = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
 
   const selectedRole = ROLES.find(r => r.id === role);
 
   function handleRoleSelect(id: string) {
-    setRole(id);
-    setDropOpen(false);
-    setError("");
-    setEmail("");      // clear — let user type their own credentials
-    setPassword("");
+    setRole(id); setDropOpen(false); setError("");
+    setEmail(""); setPassword(""); setFullName(""); setSpecialization("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,10 +46,10 @@ export default function Login() {
     if (!role) { setError("Please select your role."); return; }
     if (!email.trim()) { setError("Please enter your email."); return; }
     if (!password.trim()) { setError("Please enter your password."); return; }
-    setLoading(true);
-    setError("");
-    await new Promise(r => setTimeout(r, 700));
-    login(email, role as UserRole);
+    if (role === "doctor" && !fullName.trim()) { setError("Please enter your full name."); return; }
+    setLoading(true); setError("");
+    await new Promise(r => setTimeout(r, 500));
+    await login(email, role as UserRole, fullName || undefined, specialization || undefined);
     setLoading(false);
     navigate(selectedRole!.path);
   }
@@ -192,6 +191,30 @@ export default function Login() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Full Name — doctors only */}
+          {role === "doctor" && (
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c5c4a", display: "block", marginBottom: "0.4rem" }}>Full Name *</label>
+              <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Dr. Your Name"
+                style={inp}
+                onFocus={e => { e.target.style.borderColor = "#c17b5c"; e.target.style.boxShadow = "0 0 0 3px rgba(193,123,92,0.15)"; }}
+                onBlur={e => { e.target.style.borderColor = "rgba(180,140,110,0.25)"; e.target.style.boxShadow = "none"; }}
+              />
+            </div>
+          )}
+
+          {/* Specialization — doctors only (optional) */}
+          {role === "doctor" && (
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c5c4a", display: "block", marginBottom: "0.4rem" }}>Specialization (optional)</label>
+              <input value={specialization} onChange={e => setSpecialization(e.target.value)} placeholder="e.g. Clinical Psychology"
+                style={inp}
+                onFocus={e => { e.target.style.borderColor = "#c17b5c"; e.target.style.boxShadow = "0 0 0 3px rgba(193,123,92,0.15)"; }}
+                onBlur={e => { e.target.style.borderColor = "rgba(180,140,110,0.25)"; e.target.style.boxShadow = "none"; }}
+              />
+            </div>
+          )}
 
           {/* Email */}
           <div style={{ marginBottom: "1rem" }}>

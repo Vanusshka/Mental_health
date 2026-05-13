@@ -99,6 +99,18 @@ create trigger trg_update_checkin_count
 after insert on workshop_participants
 for each row execute function update_workshop_checkin_count();
 
+-- ── doctors ──────────────────────────────────────────────────────
+create table if not exists doctors (
+  id               text primary key,
+  email            text not null,
+  full_name        text not null,
+  specialization   text,
+  created_at       timestamptz not null default now()
+);
+
+alter table doctors enable row level security;
+create policy "allow_all_doctors" on doctors for all using (true) with check (true);
+
 -- ── patient_sessions ─────────────────────────────────────────────
 create table if not exists patient_sessions (
   id                uuid primary key default gen_random_uuid(),
