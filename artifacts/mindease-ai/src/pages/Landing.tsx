@@ -1,12 +1,13 @@
 ﻿/**
- * Landing Page — MANAS / MANAS
- * Full-screen hero using the MANAS watercolor image.
- * "Get Started" → /login
+ * Landing Page — MANAS
+ * Uses landingpage.jpg as background.
+ * Shows MANAS title + tagline centered, Get Started button at bottom.
+ * Fully responsive for mobile and desktop.
  */
 
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
-import { Heart, Sparkles, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -14,154 +15,148 @@ export default function Landing() {
   const [, navigate] = useLocation();
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        width: "100%",
+    <div style={{ minHeight: "100dvh", width: "100%", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+
+      {/* Full-screen background image */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 0 }}>
+        <img
+          src="/landingpage.jpg"
+          alt="MANAS"
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center center" }}
+        />
+        {/* Gradient overlay — darker at top/bottom for text readability */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.05) 60%, rgba(0,0,0,0.35) 100%)",
+        }} />
+      </div>
+
+      {/* ── Center content — MANAS title + tagline ── */}
+      <div style={{
         position: "relative",
-        overflow: "hidden",
+        zIndex: 10,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {/* ── Full-screen background image ─────────────────────── */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-        }}
-      >
-        <img
-          src="/landingpage.png"
-          alt="MANAS — Emotional Wellness"
+        textAlign: "center",
+        padding: "0 1.5rem",
+        marginTop: "-8vh", // shift slightly above center
+      }}>
+        {/* MANAS title */}
+        <motion.h1
+          initial={{ opacity: 0, y: -20, filter: "blur(8px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ delay: 0.1, duration: 0.9, ease: EASE }}
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center top",
-            filter: "brightness(1.02) saturate(1.05)",
-          }}
-        />
-        {/* Very light overlay to keep text crisp */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to bottom, rgba(255,248,240,0.15) 0%, rgba(255,245,235,0.25) 60%, rgba(255,240,225,0.45) 100%)",
-          }}
-        />
-      </div>
-
-      {/* ── Content — pushed to bottom so MANAS text in image is visible ── */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "8vh",
-          left: 0,
-          right: 0,
-          zIndex: 10,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          textAlign: "center",
-          padding: "0 2rem",
-        }}
-      >
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.4rem",
-            padding: "0.35rem 1rem",
-            borderRadius: 50,
-            background: "rgba(255,255,255,0.55)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(180,140,120,0.3)",
-            fontSize: "0.75rem",
-            fontWeight: 600,
-            color: "#7c5c4a",
-            marginBottom: "1.25rem",
-            boxShadow: "0 2px 12px rgba(180,120,80,0.12)",
+            fontSize: "clamp(3.5rem, 12vw, 7rem)",
+            fontWeight: 900,
+            letterSpacing: "0.12em",
+            color: "white",
+            textShadow: "0 4px 32px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.5)",
+            lineHeight: 1,
+            marginBottom: "0.6rem",
+            fontFamily: "'Poppins', sans-serif",
           }}
         >
-          <Sparkles size={12} />
-          AI-Assisted Emotional Wellness Platform
-        </motion.div>
-
-        {/* Get Started Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.4, duration: 0.7, ease: EASE }}
-        >
-          <motion.button
-            onClick={() => navigate("/login")}
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.6rem",
-              padding: "0.85rem 2.4rem",
-              borderRadius: 50,
-              background: "linear-gradient(135deg, #c17b5c, #a0522d, #8b6f47)",
-              color: "white",
-              border: "none",
-              fontSize: "1rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow: "0 8px 32px rgba(160,82,45,0.35), 0 2px 8px rgba(0,0,0,0.1)",
-              letterSpacing: "0.02em",
-            }}
-          >
-            <Heart size={17} />
-            Get Started
-            <ArrowRight size={17} />
-          </motion.button>
-        </motion.div>
+          MANAS
+        </motion.h1>
 
         {/* Tagline */}
         <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.7, ease: EASE }}
+          style={{
+            fontSize: "clamp(0.9rem, 2.5vw, 1.15rem)",
+            color: "rgba(255,255,255,0.92)",
+            fontWeight: 500,
+            letterSpacing: "0.02em",
+            textShadow: "0 2px 12px rgba(0,0,0,0.4)",
+            maxWidth: 480,
+            lineHeight: 1.5,
+          }}
+        >
+          A safe space for your mental wellness and growth
+        </motion.p>
+      </div>
+
+      {/* ── Bottom content — badge + button ── */}
+      <div style={{
+        position: "fixed",
+        bottom: "clamp(1.5rem, 6vh, 4rem)",
+        left: 0,
+        right: 0,
+        zIndex: 10,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "0.85rem",
+        padding: "0 1.5rem",
+      }}>
+        {/* Get Started Button */}
+        <motion.button
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: 0.6, duration: 0.7, ease: EASE }}
+          onClick={() => navigate("/login")}
+          whileHover={{ scale: 1.05, y: -2 }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.6rem",
+            padding: "0.9rem 2.6rem",
+            borderRadius: 50,
+            background: "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,248,240,0.9))",
+            color: "#5c3d2e",
+            border: "none",
+            fontSize: "clamp(0.9rem, 2.5vw, 1rem)",
+            fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.15)",
+            letterSpacing: "0.02em",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          Get Started
+          <ArrowRight size={17} />
+        </motion.button>
+
+        {/* Tagline below button */}
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
+          transition={{ delay: 0.85 }}
           style={{
-            marginTop: "0.85rem",
-            fontSize: "0.78rem",
-            color: "rgba(100,70,50,0.65)",
+            fontSize: "clamp(0.65rem, 1.8vw, 0.75rem)",
+            color: "rgba(255,255,255,0.65)",
             fontWeight: 500,
+            textAlign: "center",
+            textShadow: "0 1px 6px rgba(0,0,0,0.4)",
           }}
         >
           Your mind matters · Your feelings are valid · You are not alone
         </motion.p>
       </div>
 
-      {/* ── Floating ambient particles ────────────────────────── */}
-      {Array.from({ length: 12 }).map((_, i) => (
+      {/* Floating ambient particles */}
+      {Array.from({ length: 10 }).map((_, i) => (
         <motion.div
           key={i}
           style={{
             position: "fixed",
-            width: 4 + (i % 3) * 2,
-            height: 4 + (i % 3) * 2,
+            width: 3 + (i % 3) * 2,
+            height: 3 + (i % 3) * 2,
             borderRadius: "50%",
-            background: ["#c9956c", "#b8a090", "#d4a574", "#c4b5a0"][i % 4],
-            left: `${8 + (i * 7.5) % 84}%`,
+            background: ["rgba(255,255,255,0.6)", "rgba(255,220,180,0.5)", "rgba(200,180,160,0.5)"][i % 3],
+            left: `${8 + (i * 8.5) % 84}%`,
             top: `${10 + (i * 11.3) % 75}%`,
             opacity: 0,
             zIndex: 5,
             pointerEvents: "none",
           }}
-          animate={{ opacity: [0, 0.45, 0], y: [0, -30, -55], scale: [0.8, 1.2, 0.5] }}
-          transition={{ duration: 4 + (i % 3), repeat: Infinity, delay: i * 0.5, ease: "easeOut" }}
+          animate={{ opacity: [0, 0.5, 0], y: [0, -25, -50], scale: [0.8, 1.2, 0.5] }}
+          transition={{ duration: 4 + (i % 3), repeat: Infinity, delay: i * 0.6, ease: "easeOut" }}
         />
       ))}
     </div>

@@ -342,6 +342,7 @@ export default function EmotionalAssessmentFlow() {
               emotions={emotionResult.emotions}
               answers={answers}
               onReset={handleReset}
+              reflection={reflection}
             />
           </motion.div>
         )}
