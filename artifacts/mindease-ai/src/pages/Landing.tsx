@@ -31,16 +31,18 @@ export default function Landing() {
         }} />
       </div>
 
-      {/* ── Center content — MANAS title + tagline ── */}
+      {/* ── Top content — MANAS title + tagline in the empty upper space ── */}
       <div style={{
-        position: "relative",
+        position: "fixed",
+        top: "clamp(1.5rem, 5vh, 3.5rem)",
+        left: 0,
+        right: 0,
         zIndex: 10,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         textAlign: "center",
         padding: "0 1.5rem",
-        marginTop: "-8vh", // shift slightly above center
       }}>
         {/* MANAS title */}
         <motion.h1
@@ -48,13 +50,13 @@ export default function Landing() {
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ delay: 0.1, duration: 0.9, ease: EASE }}
           style={{
-            fontSize: "clamp(3.5rem, 12vw, 7rem)",
+            fontSize: "clamp(3rem, 10vw, 6rem)",
             fontWeight: 900,
             letterSpacing: "0.12em",
-            color: "white",
-            textShadow: "0 4px 32px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.5)",
+            color: "#3d1f0a",
+            textShadow: "0 2px 12px rgba(255,245,235,0.6)",
             lineHeight: 1,
-            marginBottom: "0.6rem",
+            marginBottom: "0.5rem",
             fontFamily: "'Poppins', sans-serif",
           }}
         >
@@ -63,16 +65,15 @@ export default function Landing() {
 
         {/* Tagline */}
         <motion.p
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.7, ease: EASE }}
           style={{
-            fontSize: "clamp(0.9rem, 2.5vw, 1.15rem)",
-            color: "rgba(255,255,255,0.92)",
-            fontWeight: 500,
-            letterSpacing: "0.02em",
-            textShadow: "0 2px 12px rgba(0,0,0,0.4)",
-            maxWidth: 480,
+            fontSize: "clamp(0.85rem, 2.2vw, 1.05rem)",
+            color: "#5c3420",
+            fontWeight: 600,
+            letterSpacing: "0.01em",
+            maxWidth: 460,
             lineHeight: 1.5,
           }}
         >
@@ -108,7 +109,7 @@ export default function Landing() {
             padding: "0.9rem 2.6rem",
             borderRadius: 50,
             background: "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,248,240,0.9))",
-            color: "#5c3d2e",
+            color: "#3d1f0a",
             border: "none",
             fontSize: "clamp(0.9rem, 2.5vw, 1rem)",
             fontWeight: 700,

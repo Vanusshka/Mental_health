@@ -64,10 +64,31 @@ function VideoLayer({ src, mood }: { src: string; mood: string }) {
     const v = ref.current;
     if (!v) return;
     v.load();
-    const play = () => v.play().catch(() => {});
-    play();
-    v.addEventListener("pause", play);
-    return () => v.removeEventListener("pause", play);
+
+    function onLoaded() {
+      v!.play().catch(() => {});
+    }
+
+    // Loop only the first 10 seconds
+    function onTimeUpdate() {
+      if (v && v.currentTime >= 10) {
+        v.currentTime = 0;
+        v.play().catch(() => {});
+      }
+    }
+
+    v.addEventListener("loadeddata", onLoaded);
+    v.addEventListener("timeupdate", onTimeUpdate);
+
+    // Ensure it keeps playing
+    const onPause = () => v?.play().catch(() => {});
+    v.addEventListener("pause", onPause);
+
+    return () => {
+      v.removeEventListener("loadeddata", onLoaded);
+      v.removeEventListener("timeupdate", onTimeUpdate);
+      v.removeEventListener("pause", onPause);
+    };
   }, [src]);
 
   // Happy is lighter, neutral/sad are brighter

@@ -30,16 +30,83 @@ interface WellnessQuestionnaireProps {
   onReset: () => void;
 }
 
-type QAState = { question: string; answer: string | null };
+type QAState = { question: string; answer: string | null; options?: OptionSet };
 
-// ── Answer option sets ─────────────────────────────────────────────────────
+// ── PHQ-9 / GAD-7 inspired question bank for SAD mood ─────────────────────
+
+const PHQ_GAD_QUESTIONS = [
+  {
+    question: "Little interest or pleasure in doing things you usually enjoy",
+    options: [
+      { label: "Not at all",          value: "0", emoji: "😌" },
+      { label: "Several days",        value: "1", emoji: "🙂" },
+      { label: "More than half days", value: "2", emoji: "😐" },
+      { label: "Nearly every day",    value: "3", emoji: "😔" },
+    ],
+  },
+  {
+    question: "Feeling down, depressed, or hopeless",
+    options: [
+      { label: "Not at all",          value: "0", emoji: "😌" },
+      { label: "Several days",        value: "1", emoji: "🙂" },
+      { label: "More than half days", value: "2", emoji: "😐" },
+      { label: "Nearly every day",    value: "3", emoji: "😔" },
+    ],
+  },
+  {
+    question: "Trouble falling or staying asleep, or sleeping too much",
+    options: [
+      { label: "Not at all",          value: "0", emoji: "😴" },
+      { label: "Several days",        value: "1", emoji: "🛌" },
+      { label: "More than half days", value: "2", emoji: "😶" },
+      { label: "Nearly every day",    value: "3", emoji: "😞" },
+    ],
+  },
+  {
+    question: "Feeling tired or having little energy",
+    options: [
+      { label: "Not at all",          value: "0", emoji: "⚡" },
+      { label: "Several days",        value: "1", emoji: "🔋" },
+      { label: "More than half days", value: "2", emoji: "🪫" },
+      { label: "Nearly every day",    value: "3", emoji: "😞" },
+    ],
+  },
+  {
+    question: "Feeling nervous, anxious, or on edge",
+    options: [
+      { label: "Not at all",          value: "0", emoji: "😌" },
+      { label: "Several days",        value: "1", emoji: "😐" },
+      { label: "More than half days", value: "2", emoji: "😟" },
+      { label: "Nearly every day",    value: "3", emoji: "😰" },
+    ],
+  },
+  {
+    question: "Not being able to stop or control worrying",
+    options: [
+      { label: "Not at all",          value: "0", emoji: "🧘" },
+      { label: "Several days",        value: "1", emoji: "🙂" },
+      { label: "More than half days", value: "2", emoji: "😟" },
+      { label: "Nearly every day",    value: "3", emoji: "😰" },
+    ],
+  },
+  {
+    question: "How difficult have these feelings made daily tasks (work, home, relationships)?",
+    options: [
+      { label: "Not difficult at all", value: "0", emoji: "✅" },
+      { label: "Somewhat difficult",   value: "1", emoji: "🙂" },
+      { label: "Very difficult",       value: "2", emoji: "😔" },
+      { label: "Extremely difficult",  value: "3", emoji: "😞" },
+    ],
+  },
+];
+
+// ── Answer option sets (for Gemini-generated questions) ────────────────────
 
 const FREQUENCY_OPTIONS = [
-  { label: "Never",      value: "never",      emoji: "○" },
-  { label: "Rarely",     value: "rarely",     emoji: "◔" },
-  { label: "Sometimes",  value: "sometimes",  emoji: "◑" },
-  { label: "Often",      value: "often",      emoji: "◕" },
-  { label: "Very Often", value: "very_often", emoji: "●" },
+  { label: "Not at all",          value: "0", emoji: "○" },
+  { label: "Several days",        value: "1", emoji: "◔" },
+  { label: "More than half days", value: "2", emoji: "◑" },
+  { label: "Nearly every day",    value: "3", emoji: "●" },
 ];
 
 const DURATION_OPTIONS = [
@@ -51,38 +118,28 @@ const DURATION_OPTIONS = [
 ];
 
 const SUPPORT_OPTIONS = [
-  { label: "Close friends",   value: "close_friends",  emoji: "👥" },
-  { label: "Family",          value: "family",         emoji: "🏠" },
-  { label: "A professional",  value: "professional",   emoji: "🩺" },
+  { label: "Close friends",    value: "close_friends", emoji: "👥" },
+  { label: "Family",           value: "family",        emoji: "🏠" },
+  { label: "A professional",   value: "professional",  emoji: "🩺" },
   { label: "Online community", value: "online",        emoji: "💬" },
   { label: "No one right now", value: "no_one",        emoji: "🌿" },
 ];
 
 const IMPACT_OPTIONS = [
-  { label: "Not at all",       value: "not_at_all",    emoji: "😌" },
-  { label: "Slightly",         value: "slightly",      emoji: "🙂" },
-  { label: "Moderately",       value: "moderately",    emoji: "😐" },
-  { label: "Quite a bit",      value: "quite_a_bit",   emoji: "😔" },
-  { label: "Significantly",    value: "significantly",  emoji: "😞" },
+  { label: "Not at all",      value: "not_at_all",    emoji: "😌" },
+  { label: "Slightly",        value: "slightly",      emoji: "🙂" },
+  { label: "Moderately",      value: "moderately",    emoji: "😐" },
+  { label: "Quite a bit",     value: "quite_a_bit",   emoji: "😔" },
+  { label: "Significantly",   value: "significantly", emoji: "😞" },
 ];
 
-type OptionSet = typeof FREQUENCY_OPTIONS;
+type OptionSet = { label: string; value: string; emoji: string }[];
 
-/**
- * Heuristically pick the most relevant option set for a question.
- * Falls back to frequency options.
- */
 function pickOptions(question: string): OptionSet {
   const q = question.toLowerCase();
-  if (q.includes("how long") || q.includes("since when") || q.includes("duration") || q.includes("been feeling")) {
-    return DURATION_OPTIONS;
-  }
-  if (q.includes("who") || q.includes("support") || q.includes("talk to") || q.includes("share") || q.includes("help")) {
-    return SUPPORT_OPTIONS;
-  }
-  if (q.includes("impact") || q.includes("affect") || q.includes("influenc") || q.includes("daily") || q.includes("life")) {
-    return IMPACT_OPTIONS;
-  }
+  if (q.includes("how long") || q.includes("since when") || q.includes("duration") || q.includes("been feeling")) return DURATION_OPTIONS;
+  if (q.includes("who") || q.includes("support") || q.includes("talk to") || q.includes("share") || q.includes("help")) return SUPPORT_OPTIONS;
+  if (q.includes("impact") || q.includes("affect") || q.includes("influenc") || q.includes("daily") || q.includes("tasks") || q.includes("work")) return IMPACT_OPTIONS;
   return FREQUENCY_OPTIONS;
 }
 
@@ -124,19 +181,26 @@ export default function WellnessQuestionnaire({
     return () => clearInterval(id);
   }, [isLoading, loadingMessages.length]);
 
-  // Fetch questions from Gemini
+  // Fetch questions — use PHQ/GAD bank for sad mood, Gemini for others
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setIsLoading(true);
       setError(null);
       try {
-        const combinedText = reflection
-          ? `${userText}\n\nAdditional context: ${reflection}`
-          : userText;
+        if (mood === "sad") {
+          // Use validated PHQ-9/GAD-7 inspired questions directly — no API call
+          if (!cancelled) {
+            setQaList(PHQ_GAD_QUESTIONS.map(q => ({ question: q.question, answer: null, options: q.options })));
+            setActiveIndex(0);
+            setIsLoading(false);
+          }
+          return;
+        }
+        const combinedText = reflection ? `${userText}\n\nAdditional context: ${reflection}` : userText;
         const result = await generateQuestions({ text: combinedText, emotions });
         if (!cancelled) {
-          setQaList(result.questions.map((q) => ({ question: q, answer: null })));
+          setQaList(result.questions.map((q) => ({ question: q, answer: null, options: undefined })));
           setActiveIndex(0);
         }
       } catch (err) {
@@ -147,7 +211,7 @@ export default function WellnessQuestionnaire({
     }
     load();
     return () => { cancelled = true; };
-  }, [userText, reflection, emotions]);
+  }, [userText, reflection, emotions, mood]);
 
   function handleSelectAnswer(value: string, label: string) {
     const updated = qaList.map((qa, i) =>
@@ -171,9 +235,14 @@ export default function WellnessQuestionnaire({
     setQaList([]);
     setActiveIndex(0);
     try {
+      if (mood === "sad") {
+        setQaList(PHQ_GAD_QUESTIONS.map(q => ({ question: q.question, answer: null, options: q.options })));
+        setIsLoading(false);
+        return;
+      }
       const combinedText = reflection ? `${userText}\n\nAdditional context: ${reflection}` : userText;
       const result = await generateQuestions({ text: combinedText, emotions });
-      setQaList(result.questions.map((q) => ({ question: q, answer: null })));
+      setQaList(result.questions.map((q) => ({ question: q, answer: null, options: undefined })));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate assessment.");
     } finally {
@@ -282,7 +351,7 @@ export default function WellnessQuestionnaire({
   }
 
   const current = qaList[activeIndex];
-  const options  = current ? pickOptions(current.question) : FREQUENCY_OPTIONS;
+  const options  = current?.options ?? (current ? pickOptions(current.question) : FREQUENCY_OPTIONS);
 
   // ── Assessment questions ─────────────────────────────────────────────────
   return (
@@ -392,7 +461,7 @@ export default function WellnessQuestionnaire({
             {/* Selectable answer options */}
             <div className="px-6 pb-6">
               <motion.div
-                className="grid grid-cols-1 sm:grid-cols-5 gap-2.5"
+                className={`grid gap-2.5 ${options.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-5"}`}
                 initial="hidden"
                 animate="visible"
                 variants={{

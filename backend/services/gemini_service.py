@@ -6,12 +6,36 @@ _MODEL_CASCADE = ["gemini-2.5-flash-lite","gemini-2.5-flash","gemini-2.0-flash-l
 _client = None
 
 FALLBACK_QUESTIONS = {
-    "sadness":     ["How long have you been feeling this way?","Is there someone you trust you can talk to?","What usually helps you feel a little better?"],
-    "nervousness": ["What feels most overwhelming right now?","Have you been getting enough rest lately?","What would help you feel safer in this moment?"],
-    "anger":       ["What triggered these feelings today?","How is this affecting your daily routine?","What would help you release some of this tension?"],
-    "joy":         ["What made today feel so positive?","How can you carry this energy forward?","Who would you like to share this feeling with?"],
-    "neutral":     ["What's been on your mind most today?","How has your energy been lately?","Is there anything you'd like to feel differently about?"],
-    "default":     ["How long have you been experiencing these feelings?","How is this affecting your sleep and daily energy?","What kind of support would feel most helpful right now?"],
+    "sadness":     [
+        "Little interest or pleasure in doing things you usually enjoy — how often has this happened?",
+        "Trouble falling or staying asleep, or feeling tired — how many days this week?",
+        "How difficult have these feelings made daily tasks like work or home life?",
+    ],
+    "nervousness": [
+        "Feeling nervous, anxious, or on edge — how often over the past few days?",
+        "Not being able to stop or control worrying — does this feel like several days or nearly every day?",
+        "How much have these feelings affected your ability to focus or get things done?",
+    ],
+    "anger":       [
+        "Becoming easily annoyed or irritable — how often has this been happening?",
+        "How is this affecting your daily routine and relationships?",
+        "What would help you feel more at ease right now?",
+    ],
+    "joy":         [
+        "What was the highlight of your day that made you feel this way?",
+        "How can you carry this positive energy into tomorrow?",
+        "On a scale of 1 to 5, how much energy do you feel you have right now?",
+    ],
+    "neutral":     [
+        "On a scale of 1 to 10, how would you rate your energy level today?",
+        "How well did you connect with others today — not at all, a little, or well?",
+        "What is one small step you could take tomorrow to feel even slightly better?",
+    ],
+    "default":     [
+        "How many hours of sleep did you get last night, and how would you rate its quality?",
+        "How would you describe your current stress level — very low, moderate, or very high?",
+        "How difficult have your feelings made it to do your work or daily tasks this week?",
+    ],
 }
 
 def _get_client():
