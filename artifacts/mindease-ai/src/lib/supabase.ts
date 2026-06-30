@@ -13,8 +13,11 @@ const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export const isSupabaseConfigured =
   !!supabaseUrl &&
+  supabaseUrl.includes("supabase.co") &&
   !!supabaseKey &&
-  !supabaseKey.includes("your_supabase");
+  supabaseKey.length > 20 &&
+  !supabaseKey.includes("your_supabase") &&
+  !supabaseKey.includes("placeholder");
 
 // Always create a client — if keys are missing it will fail gracefully on queries
 export const supabase = createClient<Database>(
