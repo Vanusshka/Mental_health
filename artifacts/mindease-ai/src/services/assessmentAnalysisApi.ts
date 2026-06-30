@@ -28,15 +28,19 @@ export async function analyzeAssessment(
   reflection?: string
 ): Promise<AssessmentAnalysisResult> {
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(`${BACKEND_URL}/analyze-assessment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mood, emotions, answers, reflection: reflection ?? "" }),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
-  } catch (err) {
-    console.warn("[MANAS] AI analysis failed, using smart fallback:", err);
+  } catch {
+    console.warn("[MANAS] Assessment analysis backend unreachable, using smart fallback");
     return smartFallback(mood, emotions, answers);
   }
 }

@@ -304,6 +304,37 @@ export async function getWorkshopAnalytics(workshopId: string): Promise<Workshop
 
 // ── Patient Management ────────────────────────────────────────────────────
 
+// ── Local patient fallback storage (when Supabase unavailable) ────────────
+
+const LOCAL_PATIENTS_KEY = "manas_local_patients";
+
+function getLocalPatients(doctorId: string): Patient[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_PATIENTS_KEY);
+    const all: Patient[] = raw ? JSON.parse(raw) : [];
+    return all.filter(p => p.doctor_id === doctorId);
+  } catch { return []; }
+}
+
+function saveLocalPatient(p: Patient): void {
+  try {
+    const raw = localStorage.getItem(LOCAL_PATIENTS_KEY);
+    const all: Patient[] = raw ? JSON.parse(raw) : [];
+    const existing = all.findIndex(x => x.id === p.id);
+    if (existing >= 0) all[existing] = p; else all.push(p);
+    localStorage.setItem(LOCAL_PATIENTS_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+function updateLocalPatient(patientId: string, notes: string): void {
+  try {
+    const raw = localStorage.getItem(LOCAL_PATIENTS_KEY);
+    const all: Patient[] = raw ? JSON.parse(raw) : [];
+    const idx = all.findIndex(x => x.id === patientId);
+    if (idx >= 0) { all[idx].notes = notes; localStorage.setItem(LOCAL_PATIENTS_KEY, JSON.stringify(all)); }
+  } catch {}
+}
+
 export interface CreatePatientInput {
   doctor_id: string;
   name: string;
@@ -313,30 +344,76 @@ export interface CreatePatientInput {
 }
 
 export async function createPatient(input: CreatePatientInput): Promise<Patient | null> {
+  const localPatient: Patient = {
+    id: crypto.randomUUID(),
+    doctor_id: input.doctor_id,
+    name: input.name,
+    age: input.age ?? null,
+    condition: input.condition ?? null,
+    notes: input.notes ?? null,
+    created_at: new Date().toISOString()
+  };
+
   if (!isSupabaseConfigured) {
-    return { id: crypto.randomUUID(), doctor_id: input.doctor_id, name: input.name, age: input.age ?? null, condition: input.condition ?? null, notes: input.notes ?? null, created_at: new Date().toISOString() };
+    saveLocalPatient(localPatient);
+    return localPatient;
   }
-  const { data, error } = await (supabase
-    .from("patients") as any)
-    .insert({ doctor_id: input.doctor_id, name: input.name, age: input.age ?? null, condition: input.condition ?? null, notes: input.notes ?? null })
-    .select()
-    .single();
-  if (error) { console.error("[Supabase] createPatient:", error.message); return null; }
-  return data as Patient;
+
+  try {
+    const { data, error } = await (supabase
+      .from("patients") as any)
+      .insert({ doctor_id: input.doctor_id, name: input.name, age: input.age ?? null, condition: input.condition ?? null, notes: input.notes ?? null })
+      .select()
+      .single();
+    if (error) {
+      console.error("[Supabase] createPatient:", error.message);
+      // Fallback to local storage
+      saveLocalPatient(localPatient);
+      return localPatient;
+    }
+    const saved = data as Patient;
+    saveLocalPatient(saved); // also cache locally
+    return saved;
+  } catch (e) {
+    console.error("[Supabase] createPatient exception:", e);
+    saveLocalPatient(localPatient);
+    return localPatient;
+  }
 }
 
 export async function getPatientsByDoctor(doctorId: string): Promise<Patient[]> {
-  if (!isSupabaseConfigured) return [];
-  const { data, error } = await (supabase
-    .from("patients") as any)
-    .select("*")
-    .eq("doctor_id", doctorId)
-    .order("created_at", { ascending: false });
-  if (error) { console.error("[Supabase] getPatients:", error.message); return []; }
-  return (data ?? []) as Patient[];
+  const localPatients = getLocalPatients(doctorId);
+
+  if (!isSupabaseConfigured) return localPatients;
+
+  try {
+    const { data, error } = await (supabase
+      .from("patients") as any)
+      .select("*")
+      .eq("doctor_id", doctorId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[Supabase] getPatients:", error.message);
+      return localPatients; // fallback
+    }
+
+    const remotePatients = (data ?? []) as Patient[];
+
+    // Merge: add any local-only patients not in remote
+    const remoteIds = new Set(remotePatients.map(p => p.id));
+    const localOnly = localPatients.filter(p => !remoteIds.has(p.id));
+
+    return [...remotePatients, ...localOnly];
+  } catch (e) {
+    console.error("[Supabase] getPatients exception:", e);
+    return localPatients;
+  }
 }
 
 export async function updatePatientNotes(patientId: string, notes: string): Promise<boolean> {
+  updateLocalPatient(patientId, notes); // always update local cache
+
   if (!isSupabaseConfigured) return true;
   const { error } = await (supabase
     .from("patients") as any)

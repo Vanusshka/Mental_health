@@ -102,15 +102,7 @@ export default function MoodSelectionCard({ onComplete }: MoodSelectionCardProps
     try {
       const text = MOOD_TEXTS[moodId];
       const result = await analyzeEmotion(text);
-      onComplete(result, text, moodId);  // pass moodId directly — don't rely on context timing
-    } catch (err) {
-      setError(
-        err instanceof Error && err.message.includes("fetch")
-          ? "Unable to reach the analysis server. Please try again later."
-          : "Emotion analysis failed. Please try again."
-      );
-      setSelected(null);
-      setMood(null);
+      onComplete(result, text, moodId);
     } finally {
       setIsAnalyzing(false);
     }

@@ -33,22 +33,26 @@ function AddPatientModal({ onAdd, onClose, doctorId }: {
 }) {
   const [form, setForm] = useState<{ name: string; age: string; condition: string; notes: string }>({ name:"", age:"", condition:"", notes:"" });
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
   const inp: React.CSSProperties = { width:"100%", padding:"0.6rem 0.9rem", borderRadius:10, border:"1px solid #e5e7eb", fontSize:"0.9rem", outline:"none", marginTop:"0.3rem", boxSizing:"border-box", fontFamily:"inherit" };
+
   async function submit() {
-    if (!form.name || !form.condition) return;
-    setLoading(true);
-    const p = await createPatient({ doctor_id: doctorId, name: form.name, age: parseInt(form.age)||undefined, condition: form.condition, notes: form.notes });
+    if (!form.name.trim()) { setErr("Patient name is required."); return; }
+    if (!form.condition.trim()) { setErr("Condition is required."); return; }
+    setLoading(true); setErr("");
+    const p = await createPatient({ doctor_id: doctorId, name: form.name.trim(), age: parseInt(form.age)||undefined, condition: form.condition.trim(), notes: form.notes.trim() });
     setLoading(false);
-    if (p) onAdd(p);
-    else alert("Could not save patient. Check Supabase connection.");
-    onClose();
+    if (p) { onAdd(p); onClose(); }
+    else setErr("Could not save patient. Will be saved locally instead.");
   }
+
   const fields: [string, keyof typeof form, string][] = [
     ["Patient Name *","name","text"],
     ["Age","age","number"],
     ["Condition *","condition","text"],
     ["Initial Notes","notes","text"],
   ];
+
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"1rem"}}>
       <motion.div initial={{opacity:0,scale:0.9}} animate={{opacity:1,scale:1}} style={{background:"white",borderRadius:24,padding:"2rem",width:"100%",maxWidth:440,boxShadow:"0 24px 64px rgba(0,0,0,0.15)"}}>
@@ -59,11 +63,12 @@ function AddPatientModal({ onAdd, onClose, doctorId }: {
         {fields.map(([label, key, type]) => (
           <div key={key} style={{marginBottom:"1rem"}}>
             <label style={{fontSize:"0.8rem",fontWeight:600,color:"#374151"}}>{label}</label>
-            <input type={type} value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})} placeholder={label} style={inp} />
+            <input type={type} value={form[key]} onChange={e=>{setForm({...form,[key]:e.target.value});setErr("");}} placeholder={label} style={inp} />
           </div>
         ))}
-        <button onClick={submit} disabled={loading} style={{width:"100%",padding:"0.8rem",borderRadius:12,background:"linear-gradient(135deg,#0ea5e9,#06b6d4)",color:"white",border:"none",fontWeight:700,fontSize:"0.95rem",cursor:"pointer",marginTop:"0.5rem",opacity:loading?0.7:1}}>
-          {loading ? "Saving to Supabase..." : "Add Patient"}
+        {err && <p style={{fontSize:"0.78rem",color:"#dc2626",marginBottom:"0.75rem",padding:"0.5rem 0.75rem",background:"rgba(220,38,38,0.06)",borderRadius:8,border:"1px solid rgba(220,38,38,0.15)"}}>{err}</p>}
+        <button onClick={submit} disabled={loading} style={{width:"100%",padding:"0.8rem",borderRadius:12,background:"linear-gradient(135deg,#0ea5e9,#06b6d4)",color:"white",border:"none",fontWeight:700,fontSize:"0.95rem",cursor:loading?"not-allowed":"pointer",marginTop:"0.5rem",opacity:loading?0.7:1}}>
+          {loading ? "Saving..." : "Add Patient"}
         </button>
       </motion.div>
     </div>
