@@ -121,7 +121,7 @@ export default function ReflectionInputCard({
         </p>
       </div>
 
-      {/* ── Reflection prompts (subtle guidance, not questions) ─────── */}
+      {/* ── Reflection prompts — read-only guidance, not interactive ── */}
       <motion.div
         className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6"
         initial="hidden"
@@ -132,29 +132,23 @@ export default function ReflectionInputCard({
         }}
       >
         {config.prompts.map((prompt, i) => (
-          <motion.button
+          <motion.div
             key={i}
             variants={{
               hidden:  { opacity: 0, y: 10, filter: "blur(3px)" },
               visible: { opacity: 1, y: 0,  filter: "blur(0px)", transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
             }}
-            onClick={() => setReflection((prev) => prev ? prev : prompt + " ")}
-            className="text-left text-xs text-muted-foreground/70 px-3.5 py-2.5 rounded-xl border transition-all duration-200 hover:text-foreground/80"
+            className="text-left text-xs text-muted-foreground/70 px-3.5 py-2.5 rounded-xl border select-none"
             style={{
               background: "rgba(255,255,255,0.4)",
               borderColor: "rgba(255,255,255,0.45)",
               backdropFilter: "blur(12px)",
+              cursor: "default",
+              userSelect: "none",
             }}
-            whileHover={{
-              background: `${accentColor}08`,
-              borderColor: `${accentColor}30`,
-              y: -2,
-              transition: { duration: 0.2 },
-            }}
-            whileTap={{ scale: 0.98 }}
           >
             {prompt}
-          </motion.button>
+          </motion.div>
         ))}
       </motion.div>
 
